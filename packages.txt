@@ -1,4 +1,2 @@
-libnss3
-libatk-bridge2.0-0
-libgtk-3-0
-libx11-xcb1
+chromium-browser
+chromium-chromedriver
