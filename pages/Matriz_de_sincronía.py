@@ -19,10 +19,15 @@ def calcular_matriz(df, metrica):
     contaminantes = df.columns
     matriz = pd.DataFrame(index=contaminantes, columns=contaminantes, dtype=float)
     
+    # Usamos las series originales para la correlación cruzada
+    df_original = df
+    
     for c1 in contaminantes:
         for c2 in contaminantes:
             if c1 == c2:
-                matriz.loc[c1, c2] = 100 if metrica == 'tendencia' else 0
+                if metrica == 'tendencia': matriz.loc[c1, c2] = 100
+                elif metrica == 'varianza': matriz.loc[c1, c2] = 0
+                elif metrica == 'desfase': matriz.loc[c1, c2] = 0
                 continue
             
             s1_suavizada = df[c1].rolling(30, center=True, min_periods=1).mean()
@@ -38,8 +43,6 @@ def calcular_matriz(df, metrica):
                 picos2, _ = find_peaks(s2_suavizada, distance=30, height=s2_suavizada.mean())
                 fechas_picos1 = s1_suavizada.index[picos1]
                 fechas_picos2 = s2_suavizada.index[picos2]
-                
-                # --- LÓGICA DE DESFASE CORREGIDA ---
                 desfases = []
                 for fecha_pico_maestro in fechas_picos1:
                     picos_esclavo_posteriores = fechas_picos2[fechas_picos2 > fecha_pico_maestro]
@@ -47,8 +50,19 @@ def calcular_matriz(df, metrica):
                         pico_esclavo_cercano = picos_esclavo_posteriores[0]
                         desfase = (pico_esclavo_cercano - fecha_pico_maestro).days
                         desfases.append(desfase)
-                
                 valor = np.var(np.array(desfases)) if len(desfases) > 0 else np.nan
+            
+            elif metrica == 'desfase':
+                # --- NUEVO CÁLCULO: Correlación Cruzada para encontrar el mejor lag ---
+                max_corr, mejor_lag = -1, 0
+                serie1_original = df_original[c1]
+                serie2_original = df_original[c2]
+                for lag in range(-60, 61): # Rango de +/- 60 días
+                    corr = serie1_original.corr(serie2_original.shift(lag))
+                    if corr > max_corr:
+                        max_corr = corr
+                        mejor_lag = lag
+                valor = mejor_lag
             
             matriz.loc[c1, c2] = valor
             
@@ -59,20 +73,39 @@ st.markdown("Esta sección proporciona una visión global de las interrelaciones
 
 df_datos = cargar_datos()
 
+# --- Visualización de las primeras dos matrices ---
 col1, col2 = st.columns(2)
-
 with col1:
     st.subheader("Sincronía de Tendencia (%)")
     matriz_tendencia = calcular_matriz(df_datos, 'tendencia')
-    fig1, ax1 = plt.subplots(figsize=(10, 8))
+    fig1, ax1 = plt.subplots(figsize=(8, 6))
     sns.heatmap(matriz_tendencia, ax=ax1, annot=True, fmt=".1f", cmap="viridis", linewidths=.5)
-    ax1.set_title("Porcentaje de Tiempo con la Misma Tendencia", fontsize=16)
+    ax1.set_title("Porcentaje de Tiempo con la Misma Tendencia")
     st.pyplot(fig1)
 
 with col2:
     st.subheader("Varianza de Desfase entre Picos")
     matriz_varianza = calcular_matriz(df_datos, 'varianza')
-    fig2, ax2 = plt.subplots(figsize=(10, 8))
+    fig2, ax2 = plt.subplots(figsize=(8, 6))
     sns.heatmap(matriz_varianza, ax=ax2, annot=True, fmt=".1f", cmap="magma_r", linewidths=.5)
-    ax2.set_title("Varianza del Desfase (días²)", fontsize=16)
+    ax2.set_title("Varianza del Desfase (días²)")
     st.pyplot(fig2)
+
+st.markdown("---")
+
+# --- NUEVA VISUALIZACIÓN: Matriz de Desfase ---
+st.header("Análisis de Liderazgo (Maestro-Esclavo)")
+st.subheader("Matriz de Desfase Óptimo (días)")
+st.markdown("""
+Esta matriz muestra el número de días de desfase que maximiza la correlación entre dos contaminantes.
+- **Valores positivos (rojo):** El contaminante de la columna se **atrasa** respecto al de la fila (el de la fila es el **maestro**).
+- **Valores negativos (azul):** El contaminante de la columna se **adelanta** respecto al de la fila (el de la columna es el **maestro**).
+- **Valores cercanos a 0 (blanco):** La relación es prácticamente **simultánea**.
+""")
+
+matriz_desfase = calcular_matriz(df_datos, 'desfase')
+fig3, ax3 = plt.subplots(figsize=(10, 8))
+# Usamos un mapa de color divergente ('vlag') para distinguir positivo/negativo
+sns.heatmap(matriz_desfase, ax=ax3, annot=True, fmt=".0f", cmap="vlag", center=0, linewidths=.5)
+ax3.set_title("Desfase para Correlación Máxima (días)")
+st.pyplot(fig3)
