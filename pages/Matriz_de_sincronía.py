@@ -61,14 +61,23 @@ def calcular_matriz(df, metrica):
 
             elif metrica == 'varianza':
                 fechas_picos1 = picos_fechas[c1]
-                fechas_picos2 = picos_fechas[c2]
+                fechas_picos2 = list(picos_fechas[c2])
                 desfases = []
                 for fecha_pico_maestro in fechas_picos1:
-                    picos_esclavo_posteriores = fechas_picos2[fechas_picos2 > fecha_pico_maestro]
-                    if not picos_esclavo_posteriores.empty:
-                        pico_esclavo_cercano = picos_esclavo_posteriores[0]
-                        desfase = (pico_esclavo_cercano - fecha_pico_maestro).days
-                        desfases.append(desfase)
+                    if not fechas_picos2:
+                        break
+
+                    pico_esclavo_cercano = min(
+                        fechas_picos2,
+                        key=lambda fecha_esclavo: (
+                            abs((fecha_esclavo - fecha_pico_maestro).days),
+                            (fecha_esclavo - fecha_pico_maestro).days,
+                        ),
+                    )
+                    desfase = (pico_esclavo_cercano - fecha_pico_maestro).days
+                    desfases.append(desfase)
+                    fechas_picos2.remove(pico_esclavo_cercano)
+
                 valor = np.var(np.array(desfases)) if len(desfases) > 0 else np.nan
 
             elif metrica == 'desfase':
