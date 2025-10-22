@@ -36,7 +36,16 @@ def calcular_matriz(df, metrica):
             if metrica == 'tendencia':
                 derivada1 = s1_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
                 derivada2 = s2_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
-                valor = np.mean(np.sign(derivada1) == np.sign(derivada2)) * 100
+                mascara_validos = (~derivada1.isna()) & (~derivada2.isna())
+                if mascara_validos.any():
+                    valor = (
+                        np.mean(
+                            np.sign(derivada1[mascara_validos]) == np.sign(derivada2[mascara_validos])
+                        )
+                        * 100
+                    )
+                else:
+                    valor = np.nan
             
             elif metrica == 'varianza':
                 picos1, _ = find_peaks(s1_suavizada, distance=30, height=s1_suavizada.mean())
@@ -78,16 +87,18 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("Sincronía de Tendencia (%)")
     matriz_tendencia = calcular_matriz(df_datos, 'tendencia')
+    anotaciones_tendencia = matriz_tendencia.applymap(lambda v: "N/D" if pd.isna(v) else f"{v:.1f}")
     fig1, ax1 = plt.subplots(figsize=(8, 6))
-    sns.heatmap(matriz_tendencia, ax=ax1, annot=True, fmt=".1f", cmap="viridis", linewidths=.5)
+    sns.heatmap(matriz_tendencia, ax=ax1, annot=anotaciones_tendencia, fmt="", cmap="viridis", linewidths=.5)
     ax1.set_title("Porcentaje de Tiempo con la Misma Tendencia")
     st.pyplot(fig1)
 
 with col2:
     st.subheader("Varianza de Desfase entre Picos")
     matriz_varianza = calcular_matriz(df_datos, 'varianza')
+    anotaciones_varianza = matriz_varianza.applymap(lambda v: "N/D" if pd.isna(v) else f"{v:.1f}")
     fig2, ax2 = plt.subplots(figsize=(8, 6))
-    sns.heatmap(matriz_varianza, ax=ax2, annot=True, fmt=".1f", cmap="magma_r", linewidths=.5)
+    sns.heatmap(matriz_varianza, ax=ax2, annot=anotaciones_varianza, fmt="", cmap="magma_r", linewidths=.5)
     ax2.set_title("Varianza del Desfase (días²)")
     st.pyplot(fig2)
 

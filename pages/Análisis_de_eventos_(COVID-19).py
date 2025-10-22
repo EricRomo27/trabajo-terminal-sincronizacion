@@ -24,7 +24,16 @@ def calcular_metricas_periodo(df_periodo, c1, c2):
 
     derivada1 = s1_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
     derivada2 = s2_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
-    sync_tend = np.mean(np.sign(derivada1) == np.sign(derivada2)) * 100
+    mascara_validos = (~derivada1.isna()) & (~derivada2.isna())
+    if mascara_validos.any():
+        sync_tend = (
+            np.mean(
+                np.sign(derivada1[mascara_validos]) == np.sign(derivada2[mascara_validos])
+            )
+            * 100
+        )
+    else:
+        sync_tend = np.nan
 
     picos1, _ = find_peaks(s1_suavizada, distance=30, height=s1_suavizada.mean())
     picos2, _ = find_peaks(s2_suavizada, distance=30, height=s2_suavizada.mean())
@@ -41,7 +50,7 @@ def calcular_metricas_periodo(df_periodo, c1, c2):
             desfases.append(desfase)
     
     var_desfase = np.var(np.array(desfases)) if len(desfases) > 0 else np.nan
-    
+
     return {"sync_tend": sync_tend, "var_desfase": var_desfase}
 
 
@@ -70,7 +79,9 @@ for nombre, (inicio, fin) in periodos.items():
     df_filtrado = df_datos[(df_datos.index >= inicio) & (df_datos.index <= fin)]
     if not df_filtrado.empty:
         metricas = calcular_metricas_periodo(df_filtrado, contaminante1, contaminante2)
-        resultados_df.loc[nombre] = [f"{metricas['sync_tend']:.1f}", f"{metricas['var_desfase']:.2f}"]
+        sync_display = "N/D" if np.isnan(metricas['sync_tend']) else f"{metricas['sync_tend']:.1f}"
+        var_display = "N/D" if np.isnan(metricas['var_desfase']) else f"{metricas['var_desfase']:.2f}"
+        resultados_df.loc[nombre] = [sync_display, var_display]
 
 st.dataframe(resultados_df)
 
