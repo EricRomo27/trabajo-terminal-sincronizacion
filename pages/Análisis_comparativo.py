@@ -114,15 +114,34 @@ if st.runtime.exists():
 
         sync_display = "N/D" if np.isnan(sync_tend) else f"{sync_tend:.1f}%"
         sync_delta = None if np.isnan(sync_tend) else f"{sync_tend - 50:.1f}%"
-        col1.metric("Sincronía de Tendencia", sync_display, delta=sync_delta)
+        col1.metric(
+            "Sincronía de Tendencia",
+            sync_display,
+            delta=sync_delta,
+            help="Porcentaje de instantes en los que las tendencias (derivadas suavizadas) de ambas series apuntan en la misma dirección.",
+        )
 
         var_display = "N/D" if np.isnan(var_desfase) else f"{var_desfase:.2f}"
         var_delta = None if np.isnan(var_desfase) else f"{-var_desfase:.2f}"
-        col2.metric("Varianza de Desfase", var_display, delta=var_delta, delta_color="inverse")
+        col2.metric(
+            "Varianza de Desfase",
+            var_display,
+            delta=var_delta,
+            delta_color="inverse",
+            help="Dispersión (en días²) de los desfases calculados entre picos emparejados; valores altos implican picos que no ocurren sincronizados.",
+        )
 
         desfase_display = "N/D" if np.isnan(desfase_medio) else f"{desfase_medio:.1f} días"
-        col3.metric("Desfase Medio", desfase_display)
-        col4.metric("Correlación Máxima", f"{resultados['max_corr']:.2f}", help=f"...")
+        col3.metric(
+            "Desfase Medio",
+            desfase_display,
+            help="Promedio (en días) de los desfases entre cada pico maestro y su pico esclavo más cercano dentro de la ventana analizada.",
+        )
+        col4.metric(
+            "Correlación Máxima",
+            f"{resultados['max_corr']:.2f}",
+            help="Mayor coeficiente de correlación de Pearson entre las series al desplazar la serie esclavo dentro de ±90 días; indica el alineamiento global de ambas curvas.",
+        )
 
         if sync_tend > 80 and var_desfase < 20:
             st.success(f"**Conclusión:** Se observa una **SINCRONIZACIÓN FUERTE** entre {contaminante_maestro} y {contaminante_esclavo}.")
