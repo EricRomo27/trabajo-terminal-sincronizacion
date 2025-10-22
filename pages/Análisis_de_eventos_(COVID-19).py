@@ -57,7 +57,7 @@ def calcular_metricas_periodo(df_periodo, c1, c2):
 st.title("🗓️ Análisis de Eventos: Impacto del COVID-19")
 st.markdown("Analiza cómo cambiaron las relaciones de sincronía durante la pandemia.")
 
-df_datos = cargar_datos()
+df_datos = cargar_datos().sort_index()
 lista_contaminantes = df_datos.columns.tolist()
 
 st.sidebar.header("Panel de Control")
@@ -70,6 +70,22 @@ periodos = {
     "Nueva Normalidad (2021-2022)": ('2021-01-01', '2022-12-31'),
     "Post-Pandemia (2023+)": ('2023-01-01', '2025-12-31')
 }
+
+total_dias = df_datos.index.normalize().nunique()
+pre_pandemia_dias = df_datos.loc['2020-01-01':'2020-03-31'].index.normalize().nunique()
+
+if pre_pandemia_dias == 0:
+    st.warning(
+        "No hay datos disponibles antes del confinamiento, por lo que la comparación con la etapa pre-pandemia no aporta información adicional."
+    )
+else:
+    cobertura = pre_pandemia_dias / max(total_dias, 1)
+    if cobertura < 0.12:
+        st.info(
+            "El periodo pre-pandemia cubre solo {:.1%} de los registros disponibles ({} días frente a {}). "
+            "Los indicadores deben interpretarse como una referencia cualitativa y no como evidencia concluyente del impacto del COVID-19."
+            .format(cobertura, pre_pandemia_dias, total_dias)
+        )
 
 st.header(f"Comparación de Sincronía: {contaminante1} vs {contaminante2}")
 
