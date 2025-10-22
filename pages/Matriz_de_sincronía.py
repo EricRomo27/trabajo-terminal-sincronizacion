@@ -6,7 +6,10 @@ import seaborn as sns
 import plotly.graph_objects as go
 from scipy.signal import find_peaks
 
-st.set_page_config(layout="wide", page_title="Matriz de Sincronía")
+from utils.peak_matching import calcular_desfases_entre_picos
+
+if st.runtime.exists():
+    st.set_page_config(layout="wide", page_title="Matriz de Sincronía")
 
 @st.cache_data
 def cargar_datos():
@@ -62,14 +65,12 @@ def calcular_matriz(df, metrica):
             elif metrica == 'varianza':
                 fechas_picos1 = picos_fechas[c1]
                 fechas_picos2 = picos_fechas[c2]
-                desfases = []
-                for fecha_pico_maestro in fechas_picos1:
-                    picos_esclavo_posteriores = fechas_picos2[fechas_picos2 > fecha_pico_maestro]
-                    if not picos_esclavo_posteriores.empty:
-                        pico_esclavo_cercano = picos_esclavo_posteriores[0]
-                        desfase = (pico_esclavo_cercano - fecha_pico_maestro).days
-                        desfases.append(desfase)
-                valor = np.var(np.array(desfases)) if len(desfases) > 0 else np.nan
+                desfases = calcular_desfases_entre_picos(
+                    fechas_picos1,
+                    fechas_picos2,
+                    ventana_maxima_dias=90,
+                )
+                valor = np.var(np.array(desfases, dtype=float)) if len(desfases) > 0 else np.nan
 
             elif metrica == 'desfase':
                 # --- NUEVO CÁLCULO: Correlación Cruzada para encontrar el mejor lag ---
