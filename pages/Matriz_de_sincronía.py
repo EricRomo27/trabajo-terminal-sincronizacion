@@ -3,7 +3,7 @@ import pandas as pd
 import sqlite3
 import numpy as np
 import seaborn as sns
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 from scipy.signal import find_peaks
 
 st.set_page_config(layout="wide", page_title="Matriz de Sincronía")
@@ -78,18 +78,75 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("Sincronía de Tendencia (%)")
     matriz_tendencia = calcular_matriz(df_datos, 'tendencia')
-    fig1, ax1 = plt.subplots(figsize=(8, 6))
-    sns.heatmap(matriz_tendencia, ax=ax1, annot=True, fmt=".1f", cmap="viridis", linewidths=.5)
-    ax1.set_title("Porcentaje de Tiempo con la Misma Tendencia")
-    st.pyplot(fig1)
+    tendencia_values = matriz_tendencia.to_numpy(dtype=float)
+    tendencia_text = np.empty_like(tendencia_values, dtype=object)
+    mask_tendencia = ~np.isnan(tendencia_values)
+    tendencia_text[mask_tendencia] = np.vectorize(lambda v: f"{v:.1f}%")(tendencia_values[mask_tendencia])
+    tendencia_text[~mask_tendencia] = ""
+    fig1 = go.Figure(
+        data=[
+            go.Heatmap(
+                z=tendencia_values,
+                x=matriz_tendencia.columns,
+                y=matriz_tendencia.index,
+                colorscale="Viridis",
+                text=tendencia_text,
+                texttemplate="%{text}",
+                textfont=dict(color="black"),
+                hovertemplate=(
+                    "Contaminante fila: %{y}<br>Contaminante columna: %{x}<br>"
+                    "Sincronía: %{z:.1f}%<extra></extra>"
+                ),
+                colorbar=dict(title="%"),
+                zmin=np.nanmin(tendencia_values),
+                zmax=np.nanmax(tendencia_values),
+            )
+        ]
+    )
+    fig1.update_layout(
+        title="Porcentaje de Tiempo con la Misma Tendencia",
+        xaxis_title="Contaminante (columna)",
+        yaxis_title="Contaminante (fila)",
+    )
+    st.plotly_chart(fig1, use_container_width=True)
 
 with col2:
     st.subheader("Varianza de Desfase entre Picos")
     matriz_varianza = calcular_matriz(df_datos, 'varianza')
-    fig2, ax2 = plt.subplots(figsize=(8, 6))
-    sns.heatmap(matriz_varianza, ax=ax2, annot=True, fmt=".1f", cmap="magma_r", linewidths=.5)
-    ax2.set_title("Varianza del Desfase (días²)")
-    st.pyplot(fig2)
+    varianza_values = matriz_varianza.to_numpy(dtype=float)
+    varianza_text = np.empty_like(varianza_values, dtype=object)
+    mask_varianza = ~np.isnan(varianza_values)
+    varianza_text[mask_varianza] = np.vectorize(lambda v: f"{v:.1f}")(varianza_values[mask_varianza])
+    varianza_text[~mask_varianza] = ""
+    magma_reversed = sns.color_palette("magma", as_cmap=False, n_colors=256)[::-1]
+    magma_colorscale = [
+        (i / (len(magma_reversed) - 1), f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})")
+        for i, (r, g, b) in enumerate(magma_reversed)
+    ]
+    fig2 = go.Figure(
+        data=[
+            go.Heatmap(
+                z=varianza_values,
+                x=matriz_varianza.columns,
+                y=matriz_varianza.index,
+                colorscale=magma_colorscale,
+                text=varianza_text,
+                texttemplate="%{text}",
+                textfont=dict(color="black"),
+                hovertemplate=(
+                    "Contaminante fila: %{y}<br>Contaminante columna: %{x}<br>"
+                    "Varianza del desfase: %{z:.1f} días²<extra></extra>"
+                ),
+                colorbar=dict(title="días²"),
+            )
+        ]
+    )
+    fig2.update_layout(
+        title="Varianza del Desfase (días²)",
+        xaxis_title="Contaminante (columna)",
+        yaxis_title="Contaminante (fila)",
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 
 st.markdown("---")
 
@@ -104,8 +161,38 @@ Esta matriz muestra el número de días de desfase que maximiza la correlación 
 """)
 
 matriz_desfase = calcular_matriz(df_datos, 'desfase')
-fig3, ax3 = plt.subplots(figsize=(10, 8))
-# Usamos un mapa de color divergente ('vlag') para distinguir positivo/negativo
-sns.heatmap(matriz_desfase, ax=ax3, annot=True, fmt=".0f", cmap="vlag", center=0, linewidths=.5)
-ax3.set_title("Desfase para Correlación Máxima (días)")
-st.pyplot(fig3)
+desfase_values = matriz_desfase.to_numpy(dtype=float)
+desfase_text = np.empty_like(desfase_values, dtype=object)
+mask_desfase = ~np.isnan(desfase_values)
+desfase_text[mask_desfase] = np.vectorize(lambda v: f"{v:.0f}")(desfase_values[mask_desfase])
+desfase_text[~mask_desfase] = ""
+vlag_palette = sns.color_palette("vlag", as_cmap=False, n_colors=256)
+vlag_colorscale = [
+    (i / (len(vlag_palette) - 1), f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})")
+    for i, (r, g, b) in enumerate(vlag_palette)
+]
+fig3 = go.Figure(
+    data=[
+        go.Heatmap(
+            z=desfase_values,
+            x=matriz_desfase.columns,
+            y=matriz_desfase.index,
+            colorscale=vlag_colorscale,
+            zmid=0,
+            text=desfase_text,
+            texttemplate="%{text}",
+            textfont=dict(color="black"),
+            hovertemplate=(
+                "Contaminante fila: %{y}<br>Contaminante columna: %{x}<br>"
+                "Desfase óptimo: %{z:.0f} días<extra></extra>"
+            ),
+            colorbar=dict(title="días"),
+        )
+    ]
+)
+fig3.update_layout(
+    title="Desfase para Correlación Máxima (días)",
+    xaxis_title="Contaminante (columna)",
+    yaxis_title="Contaminante (fila)",
+)
+st.plotly_chart(fig3, use_container_width=True)
