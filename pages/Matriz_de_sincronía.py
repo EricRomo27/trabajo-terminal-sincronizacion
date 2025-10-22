@@ -36,7 +36,16 @@ def calcular_matriz(df, metrica):
             if metrica == 'tendencia':
                 derivada1 = s1_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
                 derivada2 = s2_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
-                valor = np.mean(np.sign(derivada1) == np.sign(derivada2)) * 100
+                mascara_validos = (~derivada1.isna()) & (~derivada2.isna())
+                if mascara_validos.any():
+                    valor = (
+                        np.mean(
+                            np.sign(derivada1[mascara_validos]) == np.sign(derivada2[mascara_validos])
+                        )
+                        * 100
+                    )
+                else:
+                    valor = np.nan
             
             elif metrica == 'varianza':
                 picos1, _ = find_peaks(s1_suavizada, distance=30, height=s1_suavizada.mean())
