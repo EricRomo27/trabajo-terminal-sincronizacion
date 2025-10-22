@@ -35,12 +35,21 @@ def realizar_analisis_completo(serie_maestro, serie_esclavo, df_index):
             desfases.append(desfase)
     
     desfases_np = np.array(desfases)
-    varianza_desfase = np.var(desfases_np) if len(desfases) > 0 else 0
-    desfase_medio = np.mean(desfases_np) if len(desfases) > 0 else 0
+    varianza_desfase = np.var(desfases_np) if len(desfases) > 0 else np.nan
+    desfase_medio = np.mean(desfases_np) if len(desfases) > 0 else np.nan
 
     derivada_maestro = s_maestro_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
     derivada_esclavo = s_esclavo_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
-    sincronia_tendencia = np.mean(np.sign(derivada_maestro) == np.sign(derivada_esclavo)) * 100
+    mascara_validos = (~derivada_maestro.isna()) & (~derivada_esclavo.isna())
+    if mascara_validos.any():
+        sincronia_tendencia = (
+            np.mean(
+                np.sign(derivada_maestro[mascara_validos]) == np.sign(derivada_esclavo[mascara_validos])
+            )
+            * 100
+        )
+    else:
+        sincronia_tendencia = np.nan
     
     max_corr, mejor_lag = -1, 0
     for lag in range(-90, 91):
@@ -100,9 +109,18 @@ if contaminante_maestro and contaminante_esclavo:
     # (Métricas sin cambios...)
     sync_tend = resultados['sincronia_tendencia']
     var_desfase = resultados['varianza_desfase']
-    col1.metric("Sincronía de Tendencia", f"{sync_tend:.1f}%", delta=f"{sync_tend-50:.1f}%")
-    col2.metric("Varianza de Desfase", f"{var_desfase:.2f}", delta=f"{-var_desfase:.2f}", delta_color="inverse")
-    col3.metric("Desfase Medio", f"{resultados['desfase_medio']:.1f} días")
+    desfase_medio = resultados['desfase_medio']
+
+    sync_display = "N/D" if np.isnan(sync_tend) else f"{sync_tend:.1f}%"
+    sync_delta = None if np.isnan(sync_tend) else f"{sync_tend - 50:.1f}%"
+    col1.metric("Sincronía de Tendencia", sync_display, delta=sync_delta)
+
+    var_display = "N/D" if np.isnan(var_desfase) else f"{var_desfase:.2f}"
+    var_delta = None if np.isnan(var_desfase) else f"{-var_desfase:.2f}"
+    col2.metric("Varianza de Desfase", var_display, delta=var_delta, delta_color="inverse")
+
+    desfase_display = "N/D" if np.isnan(desfase_medio) else f"{desfase_medio:.1f} días"
+    col3.metric("Desfase Medio", desfase_display)
     col4.metric("Correlación Máxima", f"{resultados['max_corr']:.2f}", help=f"...")
 
     if sync_tend > 80 and var_desfase < 20:
