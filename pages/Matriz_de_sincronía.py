@@ -18,10 +18,31 @@ def cargar_datos():
 def calcular_matriz(df, metrica):
     contaminantes = df.columns
     matriz = pd.DataFrame(index=contaminantes, columns=contaminantes, dtype=float)
-    
-    # Usamos las series originales para la correlación cruzada
-    df_original = df
-    
+
+    # Precalculamos series suavizadas, derivadas y picos por contaminante para reutilizarlos
+    series_originales = {contaminante: df[contaminante] for contaminante in contaminantes}
+    series_suavizadas = {
+        contaminante: series_originales[contaminante].rolling(30, center=True, min_periods=1).mean()
+        for contaminante in contaminantes
+    }
+    derivadas_suavizadas = {
+        contaminante: series_suavizadas[contaminante]
+        .rolling(15, center=True)
+        .mean()
+        .pct_change(fill_method=None)
+        for contaminante in contaminantes
+    }
+    picos_indices = {}
+    picos_fechas = {}
+    for contaminante, serie_suavizada in series_suavizadas.items():
+        indices, _ = find_peaks(
+            serie_suavizada,
+            distance=30,
+            height=serie_suavizada.mean(),
+        )
+        picos_indices[contaminante] = indices
+        picos_fechas[contaminante] = serie_suavizada.index[indices]
+
     for c1 in contaminantes:
         for c2 in contaminantes:
             if c1 == c2:
@@ -29,20 +50,18 @@ def calcular_matriz(df, metrica):
                 elif metrica == 'varianza': matriz.loc[c1, c2] = 0
                 elif metrica == 'desfase': matriz.loc[c1, c2] = 0
                 continue
-            
-            s1_suavizada = df[c1].rolling(30, center=True, min_periods=1).mean()
-            s2_suavizada = df[c2].rolling(30, center=True, min_periods=1).mean()
+
+            s1_suavizada = series_suavizadas[c1]
+            s2_suavizada = series_suavizadas[c2]
 
             if metrica == 'tendencia':
-                derivada1 = s1_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
-                derivada2 = s2_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
+                derivada1 = derivadas_suavizadas[c1]
+                derivada2 = derivadas_suavizadas[c2]
                 valor = np.mean(np.sign(derivada1) == np.sign(derivada2)) * 100
-            
+
             elif metrica == 'varianza':
-                picos1, _ = find_peaks(s1_suavizada, distance=30, height=s1_suavizada.mean())
-                picos2, _ = find_peaks(s2_suavizada, distance=30, height=s2_suavizada.mean())
-                fechas_picos1 = s1_suavizada.index[picos1]
-                fechas_picos2 = s2_suavizada.index[picos2]
+                fechas_picos1 = picos_fechas[c1]
+                fechas_picos2 = picos_fechas[c2]
                 desfases = []
                 for fecha_pico_maestro in fechas_picos1:
                     picos_esclavo_posteriores = fechas_picos2[fechas_picos2 > fecha_pico_maestro]
@@ -51,12 +70,12 @@ def calcular_matriz(df, metrica):
                         desfase = (pico_esclavo_cercano - fecha_pico_maestro).days
                         desfases.append(desfase)
                 valor = np.var(np.array(desfases)) if len(desfases) > 0 else np.nan
-            
+
             elif metrica == 'desfase':
                 # --- NUEVO CÁLCULO: Correlación Cruzada para encontrar el mejor lag ---
                 max_corr, mejor_lag = -1, 0
-                serie1_original = df_original[c1]
-                serie2_original = df_original[c2]
+                serie1_original = series_originales[c1]
+                serie2_original = series_originales[c2]
                 for lag in range(-60, 61): # Rango de +/- 60 días
                     corr = serie1_original.corr(serie2_original.shift(lag))
                     if corr > max_corr:
