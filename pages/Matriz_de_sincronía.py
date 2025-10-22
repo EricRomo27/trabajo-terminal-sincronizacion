@@ -6,7 +6,10 @@ import seaborn as sns
 import plotly.graph_objects as go
 from scipy.signal import find_peaks
 
-st.set_page_config(layout="wide", page_title="Matriz de Sincronía")
+from utils.peak_matching import calcular_desfases_entre_picos
+
+if st.runtime.exists():
+    st.set_page_config(layout="wide", page_title="Matriz de Sincronía")
 
 @st.cache_data
 def cargar_datos():
