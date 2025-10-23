@@ -11,6 +11,7 @@ from __future__ import annotations
 import html
 import re
 from typing import Iterable, Mapping, Sequence
+from urllib.parse import quote
 
 import streamlit as st
 
@@ -76,10 +77,15 @@ def aplicar_estilos_generales() -> None:
                 color: #03344f;
             }
 
+            body, p, li, label, .stMarkdown p, .stMarkdown li {
+                font-size: 1.04rem;
+                line-height: 1.6;
+            }
+
             .sincronia-hero-body p {
                 margin: 0;
-                font-size: 1rem;
-                line-height: 1.5;
+                font-size: 1.08rem;
+                line-height: 1.55;
                 color: #1f2a33;
             }
 
@@ -130,6 +136,9 @@ def aplicar_estilos_generales() -> None:
                 border: 1px solid rgba(0, 93, 143, 0.12);
                 box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
                 height: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 0.6rem;
             }
 
             .sincronia-info-card h3 {
@@ -142,12 +151,35 @@ def aplicar_estilos_generales() -> None:
             .sincronia-info-card p {
                 margin: 0;
                 color: #334655;
-                font-size: 0.95rem;
+                font-size: 1.02rem;
                 line-height: 1.5;
             }
 
             .sincronia-info-card .sincronia-info-icon {
                 font-size: 1.8rem;
+            }
+
+            .sincronia-info-card .sincronia-card-button {
+                align-self: flex-start;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.45rem 0.95rem;
+                border-radius: 999px;
+                background: var(--sincronia-primary);
+                color: #ffffff !important;
+                font-weight: 600;
+                font-size: 0.98rem;
+                text-decoration: none !important;
+                box-shadow: 0 6px 16px rgba(0, 93, 143, 0.18);
+                transition: transform 0.15s ease, box-shadow 0.15s ease,
+                    background 0.15s ease;
+            }
+
+            .sincronia-info-card .sincronia-card-button:hover {
+                transform: translateY(-1px);
+                background: var(--sincronia-primary-light);
+                box-shadow: 0 10px 24px rgba(15, 142, 207, 0.28);
             }
 
             .stTabs [data-baseweb="tab-list"] {
@@ -285,6 +317,20 @@ def mostrar_tarjetas_descriptivas(
             icono = html.escape(str(tarjeta.get("icono", "")))
             titulo = _render_texto_rico(str(tarjeta.get("titulo", "")))
             descripcion = _render_texto_rico(str(tarjeta.get("descripcion", "")))
+            enlace_raw = tarjeta.get("enlace")
+            enlace = str(enlace_raw).strip() if enlace_raw else ""
+            texto_boton_raw = tarjeta.get("texto_boton")
+            texto_boton = str(texto_boton_raw) if texto_boton_raw is not None else "Explorar"
+            icono_boton = html.escape(str(tarjeta.get("icono_boton", "➡️")))
+
+            boton_html = ""
+            if enlace:
+                ruta = quote(enlace.lstrip("/"))
+                boton_html = (
+                    f"<a class=\"sincronia-card-button\" href=\"/{ruta}\">"
+                    f"{icono_boton} {html.escape(texto_boton)}"
+                    "</a>"
+                )
 
             with col:
                 st.markdown(
@@ -293,6 +339,7 @@ def mostrar_tarjetas_descriptivas(
                         <div class="sincronia-info-icon">{icono}</div>
                         <h3>{titulo}</h3>
                         <p>{descripcion}</p>
+                        {boton_html}
                     </div>
                     """,
                     unsafe_allow_html=True,
