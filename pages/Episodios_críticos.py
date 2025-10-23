@@ -182,7 +182,10 @@ heatmap = (
         x="Mes:O",
         y=alt.Y("Días por encima del umbral:Q", title="Días"),
         tooltip=["Mes", "Días por encima del umbral"],
-        color=alt.Color("Días por encima del umbral:Q", scheme="orangered"),
+        color=alt.Color(
+            "Días por encima del umbral:Q",
+            scale=alt.Scale(scheme="oranges"),
+        ),
     )
 )
 
