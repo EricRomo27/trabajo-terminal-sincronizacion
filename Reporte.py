@@ -20,7 +20,9 @@ Esta aplicación interactiva implementa la metodología de **sincronización de 
 
 * **🔬 Análisis Comparativo:** Compara dos contaminantes de tu elección, visualiza sus series de tiempo y obtén métricas detalladas de sincronización.
 * **🌐 Matriz de Sincronía:** Obtén una visión global de cómo interactúan todos los contaminantes entre sí a través de un mapa de calor interactivo.
-* **🗓️ Análisis de Eventos (COVID-19):** Estudia cómo la pandemia afectó las relaciones de sincronía entre los contaminantes.
+* **🗓️ Eventos e interrupciones:** Contrasta cualquier periodo de interés contra una referencia para medir la magnitud de los cambios.
+* **🔥 Episodios críticos:** Identifica superaciones de umbral, su duración y los momentos de mayor severidad.
+* **🔎 Exploración de tendencias:** Resume estadísticas generales, patrones estacionales y correlaciones entre contaminantes.
 
 Este sistema fue desarrollado como parte del Trabajo Terminal para la Escuela Superior de Cómputo (ESCOM) del IPN.
 """)
