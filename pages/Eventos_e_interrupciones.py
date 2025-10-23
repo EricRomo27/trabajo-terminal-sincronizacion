@@ -10,7 +10,7 @@ from scipy.signal import find_peaks
 
 from utils.peak_matching import calcular_desfases_entre_picos
 
-st.set_page_config(layout="wide", page_title="Análisis de Eventos")
+st.set_page_config(layout="wide", page_title="Eventos e interrupciones")
 
 
 @st.cache_data
