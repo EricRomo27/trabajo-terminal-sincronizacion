@@ -189,14 +189,7 @@ if st.runtime.exists():
                     " o revisar eventos que hayan provocado desfases notorios."
                 )
 
-        st.markdown(
-            """
-            <div class="app-section">
-                <h3>Visualizaciones clave</h3>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.subheader("Visualizaciones clave")
 
         pestañas = st.tabs(["Series y picos", "Dinámica de fase"])
         with pestañas[0]:
@@ -217,16 +210,9 @@ if st.runtime.exists():
                 " cambios en liderazgo o frecuencia de picos."
             )
 
+        st.subheader("Cómo interpretar estos resultados")
         st.markdown(
-            """
-            <div class="app-section">
-                <h3>Cómo interpretar estos resultados</h3>
-                <ul>
-                    <li><strong>Sincronía alta + varianza baja</strong>: respuestas casi simultáneas ante los mismos eventos.</li>
-                    <li><strong>Varianza elevada</strong>: revisa los picos emparejados para detectar desfases puntuales que estén inflando la métrica.</li>
-                    <li><strong>Correlación alta</strong>: confirma patrones globales similares incluso si los picos ocurren con cierto desfase.</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
+            "- **Sincronía alta + varianza baja**: respuestas casi simultáneas ante los mismos eventos.\n"
+            "- **Varianza elevada**: revisa los picos emparejados para detectar desfases puntuales que estén inflando la métrica.\n"
+            "- **Correlación alta**: confirma patrones globales similares incluso si los picos ocurren con cierto desfase."
         )

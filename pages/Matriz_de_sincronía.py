@@ -229,16 +229,9 @@ with pestañas[2]:
         " negativos implican que se adelanta."
     )
 
+st.subheader("Sugerencias de análisis")
 st.markdown(
-    """
-    <div class="app-section">
-        <h3>Sugerencias de análisis</h3>
-        <ul>
-            <li>Combina la sincronía de tendencia con la varianza para distinguir pares simultáneos de aquellos con desfases amplios.</li>
-            <li>Investiga en el análisis comparativo los pares con varianza alta para revisar los picos específicos que la provocan.</li>
-            <li>La matriz de desfase óptimo te ayuda a identificar liderazgos potenciales y periodos de atraso entre contaminantes.</li>
-        </ul>
-    </div>
-    """,
-    unsafe_allow_html=True,
+    "- Combina la sincronía de tendencia con la varianza para distinguir pares simultáneos de aquellos con desfases amplios.\n"
+    "- Investiga en el análisis comparativo los pares con varianza alta para revisar los picos específicos que la provocan.\n"
+    "- La matriz de desfase óptimo te ayuda a identificar liderazgos potenciales y periodos de atraso entre contaminantes."
 )

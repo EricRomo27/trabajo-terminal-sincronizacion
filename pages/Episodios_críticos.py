@@ -227,16 +227,9 @@ with contenedores[2]:
         "Identifica temporadas con mayor recurrencia de episodios críticos al observar la concentración de barras." 
     )
 
+st.subheader("¿Cómo aprovechar esta vista?")
 st.markdown(
-    """
-    <div class="app-section">
-        <h3>¿Cómo aprovechar esta vista?</h3>
-        <ul>
-            <li>Ajusta el percentil o valor manual para alinear el umbral con tus criterios de alerta.</li>
-            <li>Prioriza los episodios más extensos o con mayor exceso acumulado para focalizar acciones.</li>
-            <li>Utiliza la intensidad mensual para detectar temporadas donde conviene reforzar monitoreos.</li>
-        </ul>
-    </div>
-    """,
-    unsafe_allow_html=True,
+    "- Ajusta el percentil o valor manual para alinear el umbral con tus criterios de alerta.\n"
+    "- Prioriza los episodios más extensos o con mayor exceso acumulado para focalizar acciones.\n"
+    "- Utiliza la intensidad mensual para detectar temporadas donde conviene reforzar monitoreos."
 )

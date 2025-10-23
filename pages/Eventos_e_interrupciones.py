@@ -378,18 +378,11 @@ with contenedores[2]:
         "La banda naranja resalta el intervalo del evento y la azul el periodo utilizado como referencia."
     )
 
+st.subheader("Interpretación rápida")
 st.markdown(
-    """
-    <div class="app-section">
-        <h3>Interpretación rápida</h3>
-        <ul>
-            <li>Una sincronía superior a la referencia indica que ambos contaminantes reaccionaron al unísono durante el evento.</li>
-            <li>Varianzas altas sugieren desfases puntuales; revisa los picos emparejados para identificar la fecha exacta.</li>
-            <li>Contrasta las medias para dimensionar si el evento elevó o redujo los niveles habituales.</li>
-        </ul>
-    </div>
-    """,
-    unsafe_allow_html=True,
+    "- Una sincronía superior a la referencia indica que ambos contaminantes reaccionaron al unísono durante el evento.\n"
+    "- Varianzas altas sugieren desfases puntuales; revisa los picos emparejados para identificar la fecha exacta.\n"
+    "- Contrasta las medias para dimensionar si el evento elevó o redujo los niveles habituales."
 )
 
 if df_referencia.empty:

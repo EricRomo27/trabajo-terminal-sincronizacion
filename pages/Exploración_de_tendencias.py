@@ -190,16 +190,9 @@ with pestañas[3]:
             "Las correlaciones cercanas a ±1 indican respuesta conjunta frente a los mismos eventos o condiciones."
         )
 
+st.subheader("Consejos de exploración")
 st.markdown(
-    """
-    <div class="app-section">
-        <h3>Consejos de exploración</h3>
-        <ul>
-            <li>Combina este resumen con el análisis comparativo para profundizar en pares concretos de contaminantes.</li>
-            <li>Revisa la variación interanual para detectar años atípicos que merezcan un análisis de eventos específico.</li>
-            <li>Guarda tus combinaciones de filtros desde la barra lateral para documentar hallazgos relevantes.</li>
-        </ul>
-    </div>
-    """,
-    unsafe_allow_html=True,
+    "- Combina este resumen con el análisis comparativo para profundizar en pares concretos de contaminantes.\n"
+    "- Revisa la variación interanual para detectar años atípicos que merezcan un análisis de eventos específico.\n"
+    "- Guarda tus combinaciones de filtros desde la barra lateral para documentar hallazgos relevantes."
 )
