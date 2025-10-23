@@ -333,31 +333,45 @@ with contenedores[1]:
 
 with contenedores[2]:
     st.markdown("**Evolución temporal con bandas destacadas**")
-    df_grafica = df_datos[[contaminante_maestro, contaminante_esclavo]].reset_index().rename(columns={"Fecha": "fecha"})
+    df_grafica = (
+        df_datos[[contaminante_maestro, contaminante_esclavo]]
+        .reset_index()
+        .rename(columns={"Fecha": "fecha"})
+    )
     df_grafica = df_grafica.melt("fecha", var_name="Contaminante", value_name="Valor")
 
-evento_df = pd.DataFrame({"inicio": [inicio_evento], "fin": [fin_evento], "Tipo": [nombre_evento]})
-referencia_df = pd.DataFrame(
-    {
-        "inicio": [df_referencia.index.min()],
-        "fin": [df_referencia.index.max()],
-        "Tipo": [f"Referencia ({modo_referencia.lower()})"],
-    }
-)
-
-lineas = (
-    alt.Chart(df_grafica)
-    .mark_line()
-    .encode(
-        x="fecha:T",
-        y=alt.Y("Valor:Q", title="Concentración"),
-        color="Contaminante:N",
-        tooltip=["fecha:T", "Contaminante:N", alt.Tooltip("Valor:Q", format=".2f")],
+    evento_df = pd.DataFrame(
+        {"inicio": [inicio_evento], "fin": [fin_evento], "Tipo": [nombre_evento]}
     )
-)
+    referencia_df = pd.DataFrame(
+        {
+            "inicio": [df_referencia.index.min()],
+            "fin": [df_referencia.index.max()],
+            "Tipo": [f"Referencia ({modo_referencia.lower()})"],
+        }
+    )
 
-bandas_evento = alt.Chart(evento_df).mark_rect(opacity=0.2, color="#ff7f0e").encode(x="inicio:T", x2="fin:T")
-bandas_ref = alt.Chart(referencia_df).mark_rect(opacity=0.12, color="#1f77b4").encode(x="inicio:T", x2="fin:T")
+    lineas = (
+        alt.Chart(df_grafica)
+        .mark_line()
+        .encode(
+            x="fecha:T",
+            y=alt.Y("Valor:Q", title="Concentración"),
+            color="Contaminante:N",
+            tooltip=["fecha:T", "Contaminante:N", alt.Tooltip("Valor:Q", format=".2f")],
+        )
+    )
+
+    bandas_evento = (
+        alt.Chart(evento_df)
+        .mark_rect(opacity=0.2, color="#ff7f0e")
+        .encode(x="inicio:T", x2="fin:T")
+    )
+    bandas_ref = (
+        alt.Chart(referencia_df)
+        .mark_rect(opacity=0.12, color="#1f77b4")
+        .encode(x="inicio:T", x2="fin:T")
+    )
 
     st.altair_chart(bandas_ref + bandas_evento + lineas, use_container_width=True)
     st.caption(
@@ -380,5 +394,6 @@ st.markdown(
 
 if df_referencia.empty:
     st.info(
-        "No se encontraron datos para el periodo de referencia seleccionado. Prueba con otra opción para contextualizar los resultados."
+        "No se encontraron datos para el periodo de referencia seleccionado. "
+        "Prueba con otra opción para contextualizar los resultados."
     )
