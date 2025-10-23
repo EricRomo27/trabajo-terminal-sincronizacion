@@ -1,5 +1,5 @@
 from bisect import bisect_left
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 
 import pandas as pd
 
@@ -13,7 +13,9 @@ def calcular_desfases_entre_picos(
     fechas_maestro: Iterable[pd.Timestamp],
     fechas_esclavo: Iterable[pd.Timestamp],
     ventana_maxima_dias: int = 90,
-) -> List[int]:
+    *,
+    return_pares: bool = False,
+) -> List[int] | Tuple[List[int], List[Tuple[pd.Timestamp, pd.Timestamp, int]]]:
     """Calcula los desfases (en días) entre los picos maestro y esclavo.
 
     Alinea cada pico maestro con el pico esclavo temporalmente más cercano
@@ -27,12 +29,13 @@ def calcular_desfases_entre_picos(
     fechas_esclavo_lista = list(fechas_esclavo)
 
     if len(fechas_maestro_lista) == 0 or len(fechas_esclavo_lista) == 0:
-        return []
+        return ([], []) if return_pares else []
 
     fechas_maestro_ordenadas = _ordenar_fechas(fechas_maestro_lista)
     fechas_esclavo_restantes = _ordenar_fechas(fechas_esclavo_lista)
 
     desfases: List[int] = []
+    pares: List[Tuple[pd.Timestamp, pd.Timestamp, int]] = []
 
     for fecha_maestro in fechas_maestro_ordenadas:
         if not fechas_esclavo_restantes:
@@ -60,6 +63,9 @@ def calcular_desfases_entre_picos(
         desfase_dias = (fecha_candidata - fecha_maestro).days
         if abs(desfase_dias) <= ventana_maxima_dias:
             desfases.append(desfase_dias)
+            pares.append((fecha_maestro, fecha_candidata, desfase_dias))
             del fechas_esclavo_restantes[indice_seleccionado]
 
+    if return_pares:
+        return desfases, pares
     return desfases

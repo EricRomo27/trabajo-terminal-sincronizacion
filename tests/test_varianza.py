@@ -62,6 +62,23 @@ class PeakMatchingTests(unittest.TestCase):
 
         self.assertEqual(desfases, [1, 1])  # El último pico queda fuera de la ventana
 
+    def test_return_pares_devuelve_detalle(self):
+        fechas_maestro = pd.to_datetime(['2020-03-01', '2020-04-15'])
+        fechas_esclavo = pd.to_datetime(['2020-03-03', '2020-05-10'])
+
+        desfases, pares = calcular_desfases_entre_picos(
+            fechas_maestro, fechas_esclavo, ventana_maxima_dias=40, return_pares=True
+        )
+
+        self.assertEqual(desfases, [2, 25])
+        self.assertEqual(
+            pares,
+            [
+                (pd.Timestamp('2020-03-01'), pd.Timestamp('2020-03-03'), 2),
+                (pd.Timestamp('2020-04-15'), pd.Timestamp('2020-05-10'), 25),
+            ],
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

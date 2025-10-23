@@ -23,8 +23,8 @@ df_datos = cargar_datos()
 st.title("🔎 Exploración de tendencias y patrones")
 st.markdown(
     "Esta vista resume el comportamiento general de los contaminantes disponibles y complementa "
-    "el análisis específico del periodo de COVID-19. Ajusta el rango temporal y los contaminantes "
-    "para descubrir tendencias, cambios estacionales y relaciones entre variables."
+    "las herramientas de sincronía. Ajusta el rango temporal y los contaminantes para descubrir "
+    "tendencias, cambios estacionales y relaciones entre variables."
 )
 
 if df_datos.empty:
