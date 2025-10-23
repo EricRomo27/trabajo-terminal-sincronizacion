@@ -1,6 +1,10 @@
 import streamlit as st
 
-from utils.ui import aplicar_estilos_generales, mostrar_encabezado
+from utils.ui import (
+    aplicar_estilos_generales,
+    mostrar_encabezado,
+    mostrar_tarjetas_descriptivas,
+)
 
 st.set_page_config(
     page_title="Análisis de Sincronía de Fase",
@@ -29,29 +33,30 @@ st.write(
 st.subheader("Explora las herramientas disponibles")
 herramientas = [
     {
-        "titulo": "🔬 Análisis comparativo",
+        "icono": "🔬",
+        "titulo": "Análisis comparativo",
         "descripcion": "Visualiza series suavizadas, picos y métricas clave para evaluar sincronía, desfases y correlación.",
     },
     {
-        "titulo": "🌐 Matriz de sincronía",
+        "icono": "🌐",
+        "titulo": "Matriz de sincronía",
         "descripcion": "Explora mapas de calor interactivos sobre tendencias compartidas, varianza de desfase y liderazgo temporal.",
     },
     {
-        "titulo": "🗓️ Eventos e interrupciones",
+        "icono": "🗓️",
+        "titulo": "Eventos e interrupciones",
         "descripcion": "Evalúa episodios puntuales contra referencias históricas, revisa picos emparejados y cuantifica los cambios.",
     },
     {
-        "titulo": "🔥 Episodios críticos",
+        "icono": "🔥",
+        "titulo": "Episodios críticos",
         "descripcion": "Define umbrales dinámicos, identifica episodios prolongados y analiza la frecuencia mensual de alertas.",
     },
     {
-        "titulo": "🔎 Exploración de tendencias",
+        "icono": "🔎",
+        "titulo": "Exploración de tendencias",
         "descripcion": "Calcula resúmenes, patrones estacionales y correlaciones para respaldar hallazgos de sincronía.",
     },
 ]
 
-columnas = st.columns(2)
-for indice, herramienta in enumerate(herramientas):
-    with columnas[indice % 2]:
-        st.markdown(f"**{herramienta['titulo']}**")
-        st.write(herramienta["descripcion"])
+mostrar_tarjetas_descriptivas(herramientas, columnas=2)
