@@ -9,8 +9,14 @@ import streamlit as st
 from scipy.signal import find_peaks
 
 from utils.peak_matching import calcular_desfases_entre_picos
+from utils.ui import (
+    aplicar_estilos_generales,
+    mostrar_encabezado,
+    mostrar_tarjetas_metricas,
+)
 
 st.set_page_config(layout="wide", page_title="Eventos e interrupciones")
+aplicar_estilos_generales()
 
 
 @st.cache_data
@@ -110,10 +116,11 @@ if not df_datos.empty:
 else:
     default_intervalo = (max_fecha, max_fecha)
 
-st.title("🗓️ Analizador de eventos e interrupciones")
-st.markdown(
-    "Explora cualquier episodio relevante —como confinamientos, contingencias ambientales o cambios"
-    " operativos— y compara sus métricas con un periodo de referencia configurable."
+mostrar_encabezado(
+    "Eventos e interrupciones",
+    "Contrasta episodios específicos con periodos de referencia para dimensionar cambios en"
+    " sincronía, desfases y niveles de concentración.",
+    "🗓️",
 )
 
 st.sidebar.header("Panel de control")
@@ -169,30 +176,71 @@ resumen_ref_maestro = _resumen_periodo(df_referencia, contaminante_maestro)
 resumen_evento_esclavo = _resumen_periodo(df_evento, contaminante_esclavo)
 resumen_ref_esclavo = _resumen_periodo(df_referencia, contaminante_esclavo)
 
-col1, col2, col3 = st.columns(3)
-col1.metric(
-    "Sincronía de tendencia durante el evento",
-    value="N/D" if np.isnan(metricas_evento["sync_tend"]) else f"{metricas_evento['sync_tend']:.1f}%",
-    delta=None if np.isnan(metricas_referencia["sync_tend"]) else f"Ref: {metricas_referencia['sync_tend']:.1f}%",
-)
-col2.metric(
-    "Varianza del desfase (días²)",
-    value="N/D" if np.isnan(metricas_evento["var_desfase"]) else f"{metricas_evento['var_desfase']:.1f}",
-    delta=None
-    if np.isnan(metricas_referencia["var_desfase"])
-    else f"Ref: {metricas_referencia['var_desfase']:.1f}",
-)
-
 def _delta_metric(valor_evento: float, valor_ref: float) -> str:
     if np.isnan(valor_evento) or np.isnan(valor_ref) or valor_ref == 0:
         return ""
     return f"{((valor_evento - valor_ref) / valor_ref) * 100:.1f}% vs ref"
 
-col3.metric(
-    f"Media de {contaminante_maestro} en el evento",
-    value="N/D" if np.isnan(resumen_evento_maestro["media"]) else f"{resumen_evento_maestro['media']:.2f}",
-    delta=_delta_metric(resumen_evento_maestro["media"], resumen_ref_maestro["media"]),
-)
+metricas_tarjetas = [
+    {
+        "icono": "🎯",
+        "titulo": "Sincronía durante el evento",
+        "valor": "N/D"
+        if np.isnan(metricas_evento["sync_tend"])
+        else f"{metricas_evento['sync_tend']:.1f}%",
+        "descripcion": "Porcentaje de tiempo en que ambas tendencias apuntaron en la misma dirección.",
+        "delta": None
+        if np.isnan(metricas_referencia["sync_tend"])
+        else {
+            "texto": f"Ref: {metricas_referencia['sync_tend']:.1f}%",
+            "tipo": "neutral",
+        },
+    },
+    {
+        "icono": "⏱️",
+        "titulo": "Varianza del desfase",
+        "valor": "N/D"
+        if np.isnan(metricas_evento["var_desfase"])
+        else f"{metricas_evento['var_desfase']:.1f} días²",
+        "descripcion": "Dispersión de los desfases entre picos emparejados durante el evento.",
+        "delta": None
+        if np.isnan(metricas_referencia["var_desfase"])
+        else {
+            "texto": f"Ref: {metricas_referencia['var_desfase']:.1f} días²",
+            "tipo": "neutral",
+        },
+    },
+    {
+        "icono": "📊",
+        "titulo": f"Media de {contaminante_maestro}",
+        "valor": "N/D"
+        if np.isnan(resumen_evento_maestro["media"])
+        else f"{resumen_evento_maestro['media']:.2f}",
+        "descripcion": "Nivel promedio del contaminante maestro dentro del intervalo seleccionado.",
+        "delta": {
+            "texto": _delta_metric(
+                resumen_evento_maestro["media"], resumen_ref_maestro["media"]
+            ),
+            "tipo": "neutral",
+        },
+    },
+    {
+        "icono": "🧭",
+        "titulo": f"Media de {contaminante_esclavo}",
+        "valor": "N/D"
+        if np.isnan(resumen_evento_esclavo["media"])
+        else f"{resumen_evento_esclavo['media']:.2f}",
+        "descripcion": "Promedio del contaminante de contraste durante el evento.",
+        "delta": {
+            "texto": _delta_metric(
+                resumen_evento_esclavo["media"], resumen_ref_esclavo["media"]
+            ),
+            "tipo": "neutral",
+        },
+    },
+]
+
+mostrar_tarjetas_metricas(metricas_tarjetas)
 
 
 def _pares_a_dataframe(pares):
@@ -216,30 +264,40 @@ def _pares_a_dataframe(pares):
         ]
     )
 
+# --- Visualizaciones en pestañas ---
+contenedores = st.tabs([
+    "Emparejamiento de picos",
+    "Distribución comparada",
+    "Evolución temporal",
+])
 
-st.markdown("### Emparejamiento de picos detectados")
-tabs = st.tabs(["Evento", "Referencia"])
-
-with tabs[0]:
+with contenedores[0]:
+    st.markdown("**Picos coincidentes detectados**")
     df_pares_evento = _pares_a_dataframe(metricas_evento["pares"])
-    if df_pares_evento.empty:
-        st.info(
-            "No se detectaron picos coincidientes durante el intervalo del evento "
-            "con los criterios actuales."
-        )
-    else:
-        st.dataframe(df_pares_evento)
-
-with tabs[1]:
     df_pares_referencia = _pares_a_dataframe(metricas_referencia["pares"])
-    if df_pares_referencia.empty:
-        st.info(
-            "No hay coincidencias de picos en el periodo de referencia bajo estos parámetros."
-        )
-    else:
-        st.dataframe(df_pares_referencia)
 
-st.markdown("### Distribución comparada del evento y su referencia")
+    sub_tabs = st.tabs(["Evento", "Referencia"])
+    with sub_tabs[0]:
+        if df_pares_evento.empty:
+            st.info(
+                "No se detectaron coincidencias de picos con los parámetros actuales."
+            )
+        else:
+            st.dataframe(df_pares_evento, use_container_width=True)
+
+    with sub_tabs[1]:
+        if df_pares_referencia.empty:
+            st.info(
+                "No hay emparejamientos en el periodo de referencia seleccionado."
+            )
+        else:
+            st.dataframe(df_pares_referencia, use_container_width=True)
+
+    st.caption(
+        "Las coincidencias se obtienen utilizando la misma lógica de emparejamiento que la matriz"
+        " de sincronía, permitiendo inspeccionar desfases puntuales."
+    )
+
 
 def _tabla_resumen(nombre: str, resumen_maestro: Dict[str, float], resumen_esclavo: Dict[str, float]) -> pd.DataFrame:
     return pd.DataFrame(
@@ -259,14 +317,24 @@ def _tabla_resumen(nombre: str, resumen_maestro: Dict[str, float], resumen_escla
     )
 
 
-tabla_evento = _tabla_resumen("Evento", resumen_evento_maestro, resumen_evento_esclavo)
-tabla_ref = _tabla_resumen("Referencia", resumen_ref_maestro, resumen_ref_esclavo)
-st.dataframe(pd.concat([tabla_evento, tabla_ref], ignore_index=True))
+with contenedores[1]:
+    st.markdown("**Resumen estadístico del evento vs referencia**")
+    tabla_evento = _tabla_resumen("Evento", resumen_evento_maestro, resumen_evento_esclavo)
+    tabla_ref = _tabla_resumen("Referencia", resumen_ref_maestro, resumen_ref_esclavo)
+    st.dataframe(
+        pd.concat([tabla_evento, tabla_ref], ignore_index=True).round(2),
+        use_container_width=True,
+    )
+    st.caption(
+        "Utiliza estas estadísticas para dimensionar la magnitud del evento frente al periodo"
+        " elegido como referencia."
+    )
 
 
-st.markdown("### Evolución temporal")
-df_grafica = df_datos[[contaminante_maestro, contaminante_esclavo]].reset_index().rename(columns={"Fecha": "fecha"})
-df_grafica = df_grafica.melt("fecha", var_name="Contaminante", value_name="Valor")
+with contenedores[2]:
+    st.markdown("**Evolución temporal con bandas destacadas**")
+    df_grafica = df_datos[[contaminante_maestro, contaminante_esclavo]].reset_index().rename(columns={"Fecha": "fecha"})
+    df_grafica = df_grafica.melt("fecha", var_name="Contaminante", value_name="Valor")
 
 evento_df = pd.DataFrame({"inicio": [inicio_evento], "fin": [fin_evento], "Tipo": [nombre_evento]})
 referencia_df = pd.DataFrame(
@@ -291,16 +359,24 @@ lineas = (
 bandas_evento = alt.Chart(evento_df).mark_rect(opacity=0.2, color="#ff7f0e").encode(x="inicio:T", x2="fin:T")
 bandas_ref = alt.Chart(referencia_df).mark_rect(opacity=0.12, color="#1f77b4").encode(x="inicio:T", x2="fin:T")
 
-st.altair_chart(bandas_ref + bandas_evento + lineas, use_container_width=True)
+    st.altair_chart(bandas_ref + bandas_evento + lineas, use_container_width=True)
+    st.caption(
+        "La banda naranja resalta el intervalo del evento y la azul el periodo utilizado como referencia."
+    )
 
-
-st.markdown("### Interpretación rápida")
-bullet_points = [
-    "Usa la sincronía de tendencia para verificar si ambos contaminantes reaccionaron en la misma dirección durante el evento.",
-    "Observa la varianza del desfase para identificar si hubo cambios en el momento en que ocurren los picos.",
-    "Contrasta la media del evento contra la referencia para dimensionar la magnitud del impacto.",
-]
-st.write("\n".join(f"- {item}" for item in bullet_points))
+st.markdown(
+    """
+    <div class="app-section">
+        <h3>Interpretación rápida</h3>
+        <ul>
+            <li>Una sincronía superior a la referencia indica que ambos contaminantes reaccionaron al unísono durante el evento.</li>
+            <li>Varianzas altas sugieren desfases puntuales; revisa los picos emparejados para identificar la fecha exacta.</li>
+            <li>Contrasta las medias para dimensionar si el evento elevó o redujo los niveles habituales.</li>
+        </ul>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 if df_referencia.empty:
     st.info(

@@ -1,16 +1,23 @@
-import streamlit as st
-import pandas as pd
+import io
 import sqlite3
+
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
+import streamlit as st
 from plotly.subplots import make_subplots
 from scipy.signal import find_peaks
-import io
 
 from utils.peak_matching import calcular_desfases_entre_picos
+from utils.ui import (
+    aplicar_estilos_generales,
+    mostrar_encabezado,
+    mostrar_tarjetas_metricas,
+)
 
 if st.runtime.exists():
     st.set_page_config(layout="wide", page_title="Análisis Comparativo")
+    aplicar_estilos_generales()
 
 @st.cache_data
 def cargar_datos():
@@ -93,7 +100,12 @@ def realizar_analisis_completo(serie_maestro, serie_esclavo, df_index):
 
 if st.runtime.exists():
     # --- Construcción de la Interfaz ---
-    st.title("🔬 Análisis Comparativo entre Contaminantes")
+    mostrar_encabezado(
+        "Análisis comparativo entre contaminantes",
+        "Contrasta dos series para evaluar sincronía de tendencias, desfases entre picos"
+        " y comportamiento de fase en un entorno interactivo.",
+        "🔬",
+    )
     df_datos = cargar_datos()
     lista_contaminantes = df_datos.columns.tolist()
 
@@ -104,59 +116,117 @@ if st.runtime.exists():
     if contaminante_maestro and contaminante_esclavo:
         resultados = realizar_analisis_completo(df_datos[contaminante_maestro], df_datos[contaminante_esclavo], df_datos.index)
 
-        st.markdown("---")
-        st.header("Resultados Cuantitativos")
-        col1, col2, col3, col4 = st.columns(4)
-        # (Métricas sin cambios...)
+        # --- Tarjetas de métricas clave ---
         sync_tend = resultados['sincronia_tendencia']
         var_desfase = resultados['varianza_desfase']
         desfase_medio = resultados['desfase_medio']
 
-        sync_display = "N/D" if np.isnan(sync_tend) else f"{sync_tend:.1f}%"
-        sync_delta = None if np.isnan(sync_tend) else f"{sync_tend - 50:.1f}%"
-        col1.metric(
-            "Sincronía de Tendencia",
-            sync_display,
-            delta=sync_delta,
-            help="Porcentaje de instantes en los que las tendencias (derivadas suavizadas) de ambas series apuntan en la misma dirección.",
+        metricas = []
+        if np.isnan(sync_tend):
+            sync_valor = "N/D"
+            sync_delta = None
+        else:
+            sync_valor = f"{sync_tend:.1f}%"
+            diferencia = sync_tend - 50
+            sync_delta = {
+                "texto": f"{diferencia:+.1f} pts vs. azar",
+                "tipo": "positive" if diferencia >= 0 else "negative",
+            }
+
+        if np.isnan(var_desfase):
+            var_valor = "N/D"
+        else:
+            var_valor = f"{var_desfase:.2f} días²"
+
+        metricas.append(
+            {
+                "icono": "🎯",
+                "titulo": "Sincronía de tendencia",
+                "valor": sync_valor,
+                "descripcion": "Porcentaje de instantes en los que ambas series comparten la misma dirección de cambio tras el suavizado.",
+                "delta": sync_delta,
+            }
+        )
+        metricas.append(
+            {
+                "icono": "⏱️",
+                "titulo": "Varianza del desfase",
+                "valor": var_valor,
+                "descripcion": "Dispersión de los desfases entre picos emparejados (días²). Valores pequeños indican ocurrencias casi simultáneas.",
+                "delta": {"texto": "Ideal: cercana a 0", "tipo": "neutral"},
+            }
+        )
+        metricas.append(
+            {
+                "icono": "🧭",
+                "titulo": "Desfase medio",
+                "valor": "N/D" if np.isnan(desfase_medio) else f"{desfase_medio:.1f} días",
+                "descripcion": "Promedio del desplazamiento temporal necesario para alinear cada pico maestro con su contraparte.",
+                "delta": {"texto": "Referencia: 0 días", "tipo": "neutral"},
+            }
+        )
+        metricas.append(
+            {
+                "icono": "🔗",
+                "titulo": "Correlación máxima",
+                "valor": f"{resultados['max_corr']:.2f}",
+                "descripcion": "Coeficiente de correlación más alto al desplazar la serie esclavo dentro de ±90 días.",
+                "delta": {"texto": f"Lag óptimo: {resultados['mejor_lag']} días", "tipo": "neutral"},
+            }
         )
 
-        var_display = "N/D" if np.isnan(var_desfase) else f"{var_desfase:.2f}"
-        var_delta = None if np.isnan(var_desfase) else f"{-var_desfase:.2f}"
-        col2.metric(
-            "Varianza de Desfase",
-            var_display,
-            delta=var_delta,
-            delta_color="inverse",
-            help="Dispersión (en días²) de los desfases calculados entre picos emparejados; valores altos implican picos que no ocurren sincronizados.",
+        mostrar_tarjetas_metricas(metricas)
+
+        if not np.isnan(sync_tend) and not np.isnan(var_desfase):
+            if sync_tend > 80 and var_desfase < 20:
+                st.success(
+                    f"**Conclusión:** Los indicadores apuntan a una sincronización **fuerte** entre"
+                    f" {contaminante_maestro} y {contaminante_esclavo}."
+                )
+            elif sync_tend < 55 and var_desfase > 80:
+                st.info(
+                    "Los contaminantes muestran respuestas poco sincronizadas; considera acotar el periodo"
+                    " o revisar eventos que hayan provocado desfases notorios."
+                )
+
+        st.markdown(
+            """
+            <div class="app-section">
+                <h3>Visualizaciones clave</h3>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-        desfase_display = "N/D" if np.isnan(desfase_medio) else f"{desfase_medio:.1f} días"
-        col3.metric(
-            "Desfase Medio",
-            desfase_display,
-            help="Promedio (en días) de los desfases entre cada pico maestro y su pico esclavo más cercano dentro de la ventana analizada.",
+        pestañas = st.tabs(["Series y picos", "Dinámica de fase"])
+        with pestañas[0]:
+            st.plotly_chart(resultados['fig_comparativa'], use_container_width=True)
+            buffer = io.BytesIO()
+            resultados['fig_comparativa'].write_image(file=buffer, format="png")
+            st.download_button(
+                label="📥 Descargar gráfica comparativa",
+                data=buffer,
+                file_name=f"analisis_{contaminante_maestro}_vs_{contaminante_esclavo}.png",
+                mime="image/png",
+            )
+
+        with pestañas[1]:
+            st.plotly_chart(resultados['fig_fase'], use_container_width=True)
+            st.caption(
+                "La diagonal punteada indica sincronía ideal (relación 1:1). Alejamientos sostenidos sugieren"
+                " cambios en liderazgo o frecuencia de picos."
+            )
+
+        st.markdown(
+            """
+            <div class="app-section">
+                <h3>Cómo interpretar estos resultados</h3>
+                <ul>
+                    <li><strong>Sincronía alta + varianza baja</strong>: respuestas casi simultáneas ante los mismos eventos.</li>
+                    <li><strong>Varianza elevada</strong>: revisa los picos emparejados para detectar desfases puntuales que estén inflando la métrica.</li>
+                    <li><strong>Correlación alta</strong>: confirma patrones globales similares incluso si los picos ocurren con cierto desfase.</li>
+                </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        col4.metric(
-            "Correlación Máxima",
-            f"{resultados['max_corr']:.2f}",
-            help="Mayor coeficiente de correlación de Pearson entre las series al desplazar la serie esclavo dentro de ±90 días; indica el alineamiento global de ambas curvas.",
-        )
-
-        if sync_tend > 80 and var_desfase < 20:
-            st.success(f"**Conclusión:** Se observa una **SINCRONIZACIÓN FUERTE** entre {contaminante_maestro} y {contaminante_esclavo}.")
-        # (Interpretación sin cambios...)
-
-        st.markdown("---")
-        st.header("Análisis Gráfico Interactivo")
-        st.plotly_chart(resultados['fig_comparativa'], use_container_width=True)
-
-        # --- NUEVA SECCIÓN DE GRÁFICAS DE FASE ---
-        st.markdown("---")
-        st.header("Análisis de Dinámica de Fase (Ciclos Acumulados)")
-        st.plotly_chart(resultados['fig_fase'], use_container_width=True)
-
-        # (Botón de descarga sin cambios...)
-        buffer = io.BytesIO()
-        resultados['fig_comparativa'].write_image(file=buffer, format="png")
-        st.download_button(label="📥 Descargar Gráfica Comparativa", data=buffer, file_name=f"analisis_{contaminante_maestro}_vs_{contaminante_esclavo}.png", mime="image/png")

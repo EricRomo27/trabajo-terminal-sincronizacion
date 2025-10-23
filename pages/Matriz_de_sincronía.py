@@ -1,15 +1,17 @@
-import streamlit as st
-import pandas as pd
-import sqlite3
 import numpy as np
-import seaborn as sns
+import pandas as pd
 import plotly.graph_objects as go
+import seaborn as sns
+import sqlite3
+import streamlit as st
 from scipy.signal import find_peaks
 
 from utils.peak_matching import calcular_desfases_entre_picos
+from utils.ui import aplicar_estilos_generales, mostrar_encabezado
 
 if st.runtime.exists():
     st.set_page_config(layout="wide", page_title="Matriz de Sincronía")
+    aplicar_estilos_generales()
 
 @st.cache_data
 def cargar_datos():
@@ -88,21 +90,53 @@ def calcular_matriz(df, metrica):
             
     return matriz
 
-st.title("🌐 Matriz de Sincronía Global")
-st.markdown("Esta sección proporciona una visión global de las interrelaciones entre todos los contaminantes.")
+mostrar_encabezado(
+    "Matriz de sincronía global",
+    "Revisa de un vistazo cómo interactúan los contaminantes: tendencias compartidas,"
+    " desfases entre picos y liderazgo temporal.",
+    "🌐",
+)
 
 df_datos = cargar_datos()
 
-# --- Visualización de las primeras dos matrices ---
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("Sincronía de Tendencia (%)")
-    matriz_tendencia = calcular_matriz(df_datos, 'tendencia')
-    tendencia_values = matriz_tendencia.to_numpy(dtype=float)
-    tendencia_text = np.empty_like(tendencia_values, dtype=object)
-    mask_tendencia = ~np.isnan(tendencia_values)
-    tendencia_text[mask_tendencia] = np.vectorize(lambda v: f"{v:.1f}%")(tendencia_values[mask_tendencia])
-    tendencia_text[~mask_tendencia] = ""
+matriz_tendencia = calcular_matriz(df_datos, 'tendencia')
+tendencia_values = matriz_tendencia.to_numpy(dtype=float)
+tendencia_text = np.empty_like(tendencia_values, dtype=object)
+mask_tendencia = ~np.isnan(tendencia_values)
+tendencia_text[mask_tendencia] = np.vectorize(lambda v: f"{v:.1f}%")(tendencia_values[mask_tendencia])
+tendencia_text[~mask_tendencia] = ""
+
+matriz_varianza = calcular_matriz(df_datos, 'varianza')
+varianza_values = matriz_varianza.to_numpy(dtype=float)
+varianza_text = np.empty_like(varianza_values, dtype=object)
+mask_varianza = ~np.isnan(varianza_values)
+varianza_text[mask_varianza] = np.vectorize(lambda v: f"{v:.1f}")(varianza_values[mask_varianza])
+varianza_text[~mask_varianza] = ""
+magma_reversed = sns.color_palette("magma", as_cmap=False, n_colors=256)[::-1]
+magma_colorscale = [
+    (i / (len(magma_reversed) - 1), f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})")
+    for i, (r, g, b) in enumerate(magma_reversed)
+]
+
+matriz_desfase = calcular_matriz(df_datos, 'desfase')
+desfase_values = matriz_desfase.to_numpy(dtype=float)
+desfase_text = np.empty_like(desfase_values, dtype=object)
+mask_desfase = ~np.isnan(desfase_values)
+desfase_text[mask_desfase] = np.vectorize(lambda v: f"{v:.0f}")(desfase_values[mask_desfase])
+desfase_text[~mask_desfase] = ""
+vlag_palette = sns.color_palette("vlag", as_cmap=False, n_colors=256)
+vlag_colorscale = [
+    (i / (len(vlag_palette) - 1), f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})")
+    for i, (r, g, b) in enumerate(vlag_palette)
+]
+
+pestañas = st.tabs([
+    "Sincronía de tendencia",
+    "Varianza del desfase",
+    "Desfase óptimo",
+])
+
+with pestañas[0]:
     fig1 = go.Figure(
         data=[
             go.Heatmap(
@@ -124,25 +158,17 @@ with col1:
         ]
     )
     fig1.update_layout(
-        title="Porcentaje de Tiempo con la Misma Tendencia",
+        title="Porcentaje de tiempo con la misma dirección de cambio",
         xaxis_title="Contaminante (columna)",
         yaxis_title="Contaminante (fila)",
     )
     st.plotly_chart(fig1, use_container_width=True)
+    st.caption(
+        "Valores cercanos al 100% indican respuestas sincronizadas; usa esta pestaña para detectar"
+        " pares con comportamientos muy similares."
+    )
 
-with col2:
-    st.subheader("Varianza de Desfase entre Picos")
-    matriz_varianza = calcular_matriz(df_datos, 'varianza')
-    varianza_values = matriz_varianza.to_numpy(dtype=float)
-    varianza_text = np.empty_like(varianza_values, dtype=object)
-    mask_varianza = ~np.isnan(varianza_values)
-    varianza_text[mask_varianza] = np.vectorize(lambda v: f"{v:.1f}")(varianza_values[mask_varianza])
-    varianza_text[~mask_varianza] = ""
-    magma_reversed = sns.color_palette("magma", as_cmap=False, n_colors=256)[::-1]
-    magma_colorscale = [
-        (i / (len(magma_reversed) - 1), f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})")
-        for i, (r, g, b) in enumerate(magma_reversed)
-    ]
+with pestañas[1]:
     fig2 = go.Figure(
         data=[
             go.Heatmap(
@@ -162,57 +188,57 @@ with col2:
         ]
     )
     fig2.update_layout(
-        title="Varianza del Desfase (días²)",
+        title="Dispersión de desfases entre picos emparejados",
         xaxis_title="Contaminante (columna)",
         yaxis_title="Contaminante (fila)",
     )
     st.plotly_chart(fig2, use_container_width=True)
+    st.caption(
+        "Revisa esta matriz para identificar pares con desfases elevados que requieran análisis"
+        " detallado en la vista comparativa."
+    )
 
-st.markdown("---")
+with pestañas[2]:
+    fig3 = go.Figure(
+        data=[
+            go.Heatmap(
+                z=desfase_values,
+                x=matriz_desfase.columns,
+                y=matriz_desfase.index,
+                colorscale=vlag_colorscale,
+                zmid=0,
+                text=desfase_text,
+                texttemplate="%{text}",
+                textfont=dict(color="black"),
+                hovertemplate=(
+                    "Contaminante fila: %{y}<br>Contaminante columna: %{x}<br>"
+                    "Desfase óptimo: %{z:.0f} días<extra></extra>"
+                ),
+                colorbar=dict(title="días"),
+            )
+        ]
+    )
+    fig3.update_layout(
+        title="Desfase que maximiza la correlación",
+        xaxis_title="Contaminante (columna)",
+        yaxis_title="Contaminante (fila)",
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+    st.caption(
+        "Valores positivos indican que la serie en columnas se atrasa respecto a la fila; valores"
+        " negativos implican que se adelanta."
+    )
 
-# --- NUEVA VISUALIZACIÓN: Matriz de Desfase ---
-st.header("Análisis de Liderazgo (Maestro-Esclavo)")
-st.subheader("Matriz de Desfase Óptimo (días)")
-st.markdown("""
-Esta matriz muestra el número de días de desfase que maximiza la correlación entre dos contaminantes.
-- **Valores positivos (rojo):** El contaminante de la columna se **atrasa** respecto al de la fila (el de la fila es el **maestro**).
-- **Valores negativos (azul):** El contaminante de la columna se **adelanta** respecto al de la fila (el de la columna es el **maestro**).
-- **Valores cercanos a 0 (blanco):** La relación es prácticamente **simultánea**.
-""")
-
-matriz_desfase = calcular_matriz(df_datos, 'desfase')
-desfase_values = matriz_desfase.to_numpy(dtype=float)
-desfase_text = np.empty_like(desfase_values, dtype=object)
-mask_desfase = ~np.isnan(desfase_values)
-desfase_text[mask_desfase] = np.vectorize(lambda v: f"{v:.0f}")(desfase_values[mask_desfase])
-desfase_text[~mask_desfase] = ""
-vlag_palette = sns.color_palette("vlag", as_cmap=False, n_colors=256)
-vlag_colorscale = [
-    (i / (len(vlag_palette) - 1), f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})")
-    for i, (r, g, b) in enumerate(vlag_palette)
-]
-fig3 = go.Figure(
-    data=[
-        go.Heatmap(
-            z=desfase_values,
-            x=matriz_desfase.columns,
-            y=matriz_desfase.index,
-            colorscale=vlag_colorscale,
-            zmid=0,
-            text=desfase_text,
-            texttemplate="%{text}",
-            textfont=dict(color="black"),
-            hovertemplate=(
-                "Contaminante fila: %{y}<br>Contaminante columna: %{x}<br>"
-                "Desfase óptimo: %{z:.0f} días<extra></extra>"
-            ),
-            colorbar=dict(title="días"),
-        )
-    ]
+st.markdown(
+    """
+    <div class="app-section">
+        <h3>Sugerencias de análisis</h3>
+        <ul>
+            <li>Combina la sincronía de tendencia con la varianza para distinguir pares simultáneos de aquellos con desfases amplios.</li>
+            <li>Investiga en el análisis comparativo los pares con varianza alta para revisar los picos específicos que la provocan.</li>
+            <li>La matriz de desfase óptimo te ayuda a identificar liderazgos potenciales y periodos de atraso entre contaminantes.</li>
+        </ul>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
-fig3.update_layout(
-    title="Desfase para Correlación Máxima (días)",
-    xaxis_title="Contaminante (columna)",
-    yaxis_title="Contaminante (fila)",
-)
-st.plotly_chart(fig3, use_container_width=True)

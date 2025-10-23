@@ -8,6 +8,12 @@ import pandas as pd
 import sqlite3
 import streamlit as st
 
+from utils.ui import (
+    aplicar_estilos_generales,
+    mostrar_encabezado,
+    mostrar_tarjetas_metricas,
+)
+
 
 @st.cache_data
 def cargar_datos() -> pd.DataFrame:
@@ -82,10 +88,12 @@ def filtrar_episodios(episodios: List[Episodio], min_dias: int) -> List[Episodio
 
 
 st.set_page_config(layout="wide", page_title="Episodios críticos")
-st.title("🚨 Episodios críticos y superaciones de umbral")
-st.markdown(
-    "Identifica periodos de concentración elevada, cuantifica su duración y evalúa el exceso acumulado"
-    " respecto a un umbral configurable (manual o basado en percentiles)."
+aplicar_estilos_generales()
+mostrar_encabezado(
+    "Episodios críticos y superaciones de umbral",
+    "Ajusta umbrales dinámicos para identificar periodos prolongados de concentración elevada"
+    " y analizar su severidad.",
+    "🚨",
 )
 
 df_datos = cargar_datos()
@@ -120,16 +128,29 @@ superaciones_diarias = (serie_objetivo > umbral).astype(int)
 conteo_mensual = superaciones_diarias.groupby(pd.Grouper(freq="M")).sum()
 conteo_mensual.index = conteo_mensual.index.strftime("%Y-%m")
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Episodios detectados", len(episodios))
-col2.metric(
-    "Mayor duración (días)",
-    0 if not episodios else max(ep.duracion for ep in episodios),
-)
-col3.metric(
-    "Exceso acumulado total",
-    f"{sum(ep.exceso_acumulado for ep in episodios):.1f}",
-)
+metricas = [
+    {
+        "icono": "📍",
+        "titulo": "Episodios detectados",
+        "valor": len(episodios),
+        "descripcion": "Cantidad de periodos consecutivos que superan el umbral seleccionado.",
+    },
+    {
+        "icono": "⏳",
+        "titulo": "Mayor duración",
+        "valor": 0 if not episodios else f"{max(ep.duracion for ep in episodios)} días",
+        "descripcion": "Duración del episodio más prolongado encontrado en el intervalo analizado.",
+    },
+    {
+        "icono": "🔥",
+        "titulo": "Exceso acumulado",
+        "valor": f"{sum(ep.exceso_acumulado for ep in episodios):.1f}",
+        "descripcion": "Suma del excedente por encima del umbral durante todos los episodios detectados.",
+        "delta": {"texto": "Valores altos implican eventos más severos", "tipo": "neutral"},
+    },
+]
+
+mostrar_tarjetas_metricas(metricas)
 
 
 def _episodios_a_dataframe(episodios: List[Episodio]) -> pd.DataFrame:
@@ -152,48 +173,70 @@ def _episodios_a_dataframe(episodios: List[Episodio]) -> pd.DataFrame:
     )
 
 
-st.markdown("### Episodios identificados")
-st.dataframe(_episodios_a_dataframe(episodios))
+contenedores = st.tabs([
+    "Episodios identificados",
+    "Evolución temporal",
+    "Intensidad mensual",
+])
 
-st.markdown("### Evolución temporal y umbral seleccionado")
-df_grafica = serie_objetivo.reset_index().rename(columns={"Fecha": "fecha", contaminante: "valor"})
-lineas = (
-    alt.Chart(df_grafica)
-    .mark_line(color="#1f77b4")
-    .encode(x="fecha:T", y=alt.Y("valor:Q", title="Concentración"))
-)
-
-umbral_chart = (
-    alt.Chart(pd.DataFrame({"fecha": df_grafica["fecha"], "umbral": umbral}))
-    .mark_line(color="red", strokeDash=[6, 3])
-    .encode(x="fecha:T", y="umbral:Q")
-)
-
-st.altair_chart(lineas + umbral_chart, use_container_width=True)
-
-st.markdown("### Intensidad mensual de superaciones")
-heatmap_df = conteo_mensual.reset_index()
-heatmap_df.columns = ["Mes", "Días por encima del umbral"]
-
-heatmap = (
-    alt.Chart(heatmap_df)
-    .mark_bar()
-    .encode(
-        x="Mes:O",
-        y=alt.Y("Días por encima del umbral:Q", title="Días"),
-        tooltip=["Mes", "Días por encima del umbral"],
-        color=alt.Color(
-            "Días por encima del umbral:Q",
-            scale=alt.Scale(scheme="oranges"),
-        ),
+with contenedores[0]:
+    st.dataframe(_episodios_a_dataframe(episodios), use_container_width=True)
+    st.caption(
+        "Los periodos listados conservan únicamente los días consecutivos que exceden el umbral"
+        " configurado en la barra lateral."
     )
-)
 
-st.altair_chart(heatmap, use_container_width=True)
+with contenedores[1]:
+    st.markdown("**Serie diaria con umbral aplicado**")
+    df_grafica = serie_objetivo.reset_index().rename(columns={"Fecha": "fecha", contaminante: "valor"})
+    lineas = (
+        alt.Chart(df_grafica)
+        .mark_line(color="#1f77b4")
+        .encode(x="fecha:T", y=alt.Y("valor:Q", title="Concentración"))
+    )
 
-st.markdown("### ¿Cómo interpretar esta vista?")
-st.write(
-    "- Ajusta el percentil o valor manual para alinear el umbral con tus criterios de alerta.\n"
-    "- Revisa la duración y el exceso acumulado para priorizar los episodios con mayor impacto.\n"
-    "- Consulta el gráfico mensual para detectar temporadas con recurrencia de eventos críticos."
+    umbral_chart = (
+        alt.Chart(pd.DataFrame({"fecha": df_grafica["fecha"], "umbral": umbral}))
+        .mark_line(color="red", strokeDash=[6, 3])
+        .encode(x="fecha:T", y="umbral:Q")
+    )
+
+    st.altair_chart(lineas + umbral_chart, use_container_width=True)
+    st.caption("La línea punteada resalta el umbral que define las superaciones críticas.")
+
+with contenedores[2]:
+    heatmap_df = conteo_mensual.reset_index()
+    heatmap_df.columns = ["Mes", "Días por encima del umbral"]
+
+    heatmap = (
+        alt.Chart(heatmap_df)
+        .mark_bar()
+        .encode(
+            x="Mes:O",
+            y=alt.Y("Días por encima del umbral:Q", title="Días"),
+            tooltip=["Mes", "Días por encima del umbral"],
+            color=alt.Color(
+                "Días por encima del umbral:Q",
+                scale=alt.Scale(scheme="oranges"),
+            ),
+        )
+    )
+
+    st.altair_chart(heatmap, use_container_width=True)
+    st.caption(
+        "Identifica temporadas con mayor recurrencia de episodios críticos al observar la concentración de barras." 
+    )
+
+st.markdown(
+    """
+    <div class="app-section">
+        <h3>¿Cómo aprovechar esta vista?</h3>
+        <ul>
+            <li>Ajusta el percentil o valor manual para alinear el umbral con tus criterios de alerta.</li>
+            <li>Prioriza los episodios más extensos o con mayor exceso acumulado para focalizar acciones.</li>
+            <li>Utiliza la intensidad mensual para detectar temporadas donde conviene reforzar monitoreos.</li>
+        </ul>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
