@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import html
 import re
+import io
 from typing import Iterable, Mapping, Sequence
 from urllib.parse import quote
 
@@ -200,6 +201,66 @@ def aplicar_estilos_generales() -> None:
         </style>
         """,
         unsafe_allow_html=True,
+    )
+
+
+def boton_descarga_plotly(
+    figura: "plotly.graph_objects.Figure",
+    nombre_archivo: str,
+    *,
+    etiqueta: str = "📥 Descargar gráfica",
+    formato: str = "png",
+) -> None:
+    """Renderiza un botón para descargar una figura de Plotly como imagen."""
+
+    if not _runtime_activo():
+        return
+
+    from plotly.graph_objects import Figure  # importación perezosa
+
+    if not isinstance(figura, Figure):
+        raise TypeError("'figura' debe ser una instancia de plotly.graph_objects.Figure")
+
+    buffer = io.BytesIO()
+    try:
+        figura.write_image(buffer, format=formato)
+    except Exception:  # pragma: no cover - depende de Kaleido instalado
+        st.warning(
+            "No fue posible generar la descarga de la gráfica (verifica el soporte de exportación a imagen)."
+        )
+        return
+
+    buffer.seek(0)
+    st.download_button(
+        label=etiqueta,
+        data=buffer,
+        file_name=nombre_archivo,
+        mime=f"image/{formato}",
+    )
+
+
+def boton_descarga_altair(
+    grafica: "altair.Chart",
+    nombre_archivo: str,
+    *,
+    etiqueta: str = "📥 Descargar gráfica (HTML)",
+) -> None:
+    """Renderiza un botón para descargar gráficos de Altair como archivo HTML interactivo."""
+
+    if not _runtime_activo():
+        return
+
+    from altair import Chart  # importación perezosa
+
+    if not isinstance(grafica, Chart):
+        raise TypeError("'grafica' debe ser una instancia de altair.Chart")
+
+    html_chart = grafica.to_html()
+    st.download_button(
+        label=etiqueta,
+        data=html_chart.encode("utf-8"),
+        file_name=nombre_archivo,
+        mime="text/html",
     )
 
 

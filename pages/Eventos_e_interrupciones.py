@@ -11,6 +11,7 @@ from scipy.signal import find_peaks
 from utils.peak_matching import calcular_desfases_entre_picos
 from utils.ui import (
     aplicar_estilos_generales,
+    boton_descarga_altair,
     mostrar_encabezado,
     mostrar_tarjetas_metricas,
 )
@@ -373,9 +374,15 @@ with contenedores[2]:
         .encode(x="inicio:T", x2="fin:T")
     )
 
-    st.altair_chart(bandas_ref + bandas_evento + lineas, use_container_width=True)
+    grafica_evento = bandas_ref + bandas_evento + lineas
+    st.altair_chart(grafica_evento, use_container_width=True)
     st.caption(
         "La banda naranja resalta el intervalo del evento y la azul el periodo utilizado como referencia."
+    )
+    boton_descarga_altair(
+        grafica_evento,
+        f"evento_{contaminante_maestro}_vs_{contaminante_esclavo}.html",
+        etiqueta="📥 Descargar gráfica en HTML",
     )
 
 st.subheader("Interpretación rápida")

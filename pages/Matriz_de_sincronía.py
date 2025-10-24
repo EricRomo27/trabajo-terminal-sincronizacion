@@ -7,7 +7,7 @@ import streamlit as st
 from scipy.signal import find_peaks
 
 from utils.peak_matching import calcular_desfases_entre_picos
-from utils.ui import aplicar_estilos_generales, mostrar_encabezado
+from utils.ui import aplicar_estilos_generales, boton_descarga_plotly, mostrar_encabezado
 
 if st.runtime.exists():
     st.set_page_config(layout="wide", page_title="Matriz de Sincronía")
@@ -163,6 +163,11 @@ with pestañas[0]:
         yaxis_title="Contaminante (fila)",
     )
     st.plotly_chart(fig1, use_container_width=True)
+    boton_descarga_plotly(
+        fig1,
+        "matriz_sincronia_tendencia.png",
+        etiqueta="📥 Descargar matriz de tendencia",
+    )
     st.caption(
         "Valores cercanos al 100% indican respuestas sincronizadas; usa esta pestaña para detectar"
         " pares con comportamientos muy similares."
@@ -193,6 +198,11 @@ with pestañas[1]:
         yaxis_title="Contaminante (fila)",
     )
     st.plotly_chart(fig2, use_container_width=True)
+    boton_descarga_plotly(
+        fig2,
+        "matriz_varianza_desfase.png",
+        etiqueta="📥 Descargar matriz de varianza",
+    )
     st.caption(
         "Revisa esta matriz para identificar pares con desfases elevados que requieran análisis"
         " detallado en la vista comparativa."
@@ -224,6 +234,11 @@ with pestañas[2]:
         yaxis_title="Contaminante (fila)",
     )
     st.plotly_chart(fig3, use_container_width=True)
+    boton_descarga_plotly(
+        fig3,
+        "matriz_desfase_optimo.png",
+        etiqueta="📥 Descargar matriz de desfase",
+    )
     st.caption(
         "Valores positivos indican que la serie en columnas se atrasa respecto a la fila; valores"
         " negativos implican que se adelanta."

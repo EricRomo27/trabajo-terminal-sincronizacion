@@ -1,10 +1,12 @@
 import sqlite3
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
 from utils.ui import (
     aplicar_estilos_generales,
+    boton_descarga_altair,
     mostrar_encabezado,
     mostrar_tarjetas_metricas,
 )
@@ -146,7 +148,28 @@ with pestañas[0]:
 
 with pestañas[1]:
     st.markdown("**Series diarias suavizadas**")
-    st.line_chart(df_filtrado, use_container_width=True)
+    df_lineas = (
+        df_filtrado.reset_index()
+        .rename(columns={"Fecha": "fecha"})
+        .melt("fecha", var_name="Contaminante", value_name="Valor")
+    )
+    grafica_evolucion = (
+        alt.Chart(df_lineas)
+        .mark_line()
+        .encode(
+            x="fecha:T",
+            y=alt.Y("Valor:Q", title="Concentración"),
+            color="Contaminante:N",
+            tooltip=["fecha:T", "Contaminante:N", alt.Tooltip("Valor:Q", format=".2f")],
+        )
+        .interactive()
+    )
+    st.altair_chart(grafica_evolucion, use_container_width=True)
+    boton_descarga_altair(
+        grafica_evolucion,
+        "exploracion_tendencias_series.html",
+        etiqueta="📥 Descargar gráfica en HTML",
+    )
     st.caption("Observa tendencias generales y coincidencias de picos antes de pasar al análisis de sincronía.")
 
 nombre_meses = {

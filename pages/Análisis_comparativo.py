@@ -1,4 +1,3 @@
-import io
 import sqlite3
 
 import numpy as np
@@ -11,6 +10,7 @@ from scipy.signal import find_peaks
 from utils.peak_matching import calcular_desfases_entre_picos
 from utils.ui import (
     aplicar_estilos_generales,
+    boton_descarga_plotly,
     mostrar_encabezado,
     mostrar_tarjetas_metricas,
 )
@@ -194,13 +194,10 @@ if st.runtime.exists():
         pestañas = st.tabs(["Series y picos", "Dinámica de fase"])
         with pestañas[0]:
             st.plotly_chart(resultados['fig_comparativa'], use_container_width=True)
-            buffer = io.BytesIO()
-            resultados['fig_comparativa'].write_image(file=buffer, format="png")
-            st.download_button(
-                label="📥 Descargar gráfica comparativa",
-                data=buffer,
-                file_name=f"analisis_{contaminante_maestro}_vs_{contaminante_esclavo}.png",
-                mime="image/png",
+            boton_descarga_plotly(
+                resultados['fig_comparativa'],
+                f"analisis_{contaminante_maestro}_vs_{contaminante_esclavo}.png",
+                etiqueta="📥 Descargar gráfica comparativa",
             )
 
         with pestañas[1]:
@@ -208,6 +205,11 @@ if st.runtime.exists():
             st.caption(
                 "La diagonal punteada indica sincronía ideal (relación 1:1). Alejamientos sostenidos sugieren"
                 " cambios en liderazgo o frecuencia de picos."
+            )
+            boton_descarga_plotly(
+                resultados['fig_fase'],
+                f"dinamica_fase_{contaminante_maestro}_vs_{contaminante_esclavo}.png",
+                etiqueta="📥 Descargar gráfica de fase",
             )
 
         st.subheader("Cómo interpretar estos resultados")

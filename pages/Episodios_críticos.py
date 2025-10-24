@@ -10,6 +10,7 @@ import streamlit as st
 
 from utils.ui import (
     aplicar_estilos_generales,
+    boton_descarga_altair,
     mostrar_encabezado,
     mostrar_tarjetas_metricas,
 )
@@ -201,8 +202,14 @@ with contenedores[1]:
         .encode(x="fecha:T", y="umbral:Q")
     )
 
-    st.altair_chart(lineas + umbral_chart, use_container_width=True)
+    grafica_series = lineas + umbral_chart
+    st.altair_chart(grafica_series, use_container_width=True)
     st.caption("La línea punteada resalta el umbral que define las superaciones críticas.")
+    boton_descarga_altair(
+        grafica_series,
+        f"episodios_{contaminante}_serie.html",
+        etiqueta="📥 Descargar gráfica en HTML",
+    )
 
 with contenedores[2]:
     heatmap_df = conteo_mensual.reset_index()
@@ -224,7 +231,12 @@ with contenedores[2]:
 
     st.altair_chart(heatmap, use_container_width=True)
     st.caption(
-        "Identifica temporadas con mayor recurrencia de episodios críticos al observar la concentración de barras." 
+        "Identifica temporadas con mayor recurrencia de episodios críticos al observar la concentración de barras."
+    )
+    boton_descarga_altair(
+        heatmap,
+        f"episodios_{contaminante}_heatmap.html",
+        etiqueta="📥 Descargar gráfica en HTML",
     )
 
 st.subheader("¿Cómo aprovechar esta vista?")
