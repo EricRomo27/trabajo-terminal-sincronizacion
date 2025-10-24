@@ -26,6 +26,12 @@ def _runtime_activo() -> bool:
         return False
 
 
+def runtime_activo() -> bool:
+    """Versión pública del verificador de runtime para otros módulos."""
+
+    return _runtime_activo()
+
+
 def aplicar_estilos_generales() -> None:
     """Inyecta estilos globales una sola vez por sesión de Streamlit.
 
@@ -405,3 +411,14 @@ def mostrar_tarjetas_descriptivas(
                     """,
                     unsafe_allow_html=True,
                 )
+
+
+__all__ = [
+    "aplicar_estilos_generales",
+    "boton_descarga_plotly",
+    "boton_descarga_altair",
+    "mostrar_encabezado",
+    "mostrar_tarjetas_metricas",
+    "mostrar_tarjetas_descriptivas",
+    "runtime_activo",
+]

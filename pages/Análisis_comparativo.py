@@ -1,4 +1,6 @@
 import sqlite3
+import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -7,15 +9,20 @@ import streamlit as st
 from plotly.subplots import make_subplots
 from scipy.signal import find_peaks
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from utils.peak_matching import calcular_desfases_entre_picos
 from utils.ui import (
     aplicar_estilos_generales,
     boton_descarga_plotly,
     mostrar_encabezado,
     mostrar_tarjetas_metricas,
+    runtime_activo,
 )
 
-if st.runtime.exists():
+if runtime_activo():
     st.set_page_config(layout="wide", page_title="Análisis Comparativo")
     aplicar_estilos_generales()
 
@@ -98,7 +105,7 @@ def realizar_analisis_completo(serie_maestro, serie_esclavo, df_index):
 
     return {"sincronia_tendencia": sincronia_tendencia, "varianza_desfase": varianza_desfase, "desfase_medio": desfase_medio, "max_corr": max_corr, "mejor_lag": mejor_lag, "fig_comparativa": fig_comparativa, "fig_fase": fig_fase}
 
-if st.runtime.exists():
+if runtime_activo():
     # --- Construcción de la Interfaz ---
     mostrar_encabezado(
         "Análisis comparativo entre contaminantes",
