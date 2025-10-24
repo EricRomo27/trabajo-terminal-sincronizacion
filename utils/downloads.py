@@ -81,8 +81,18 @@ def boton_descarga_altair(
         _mostrar_advertencia("Altair no está disponible para exportar la gráfica.")
         return
 
-    if not isinstance(grafica, alt.Chart):
-        _mostrar_advertencia("La descarga solo está disponible para objetos altair.Chart.")
+    grafico_valido = False
+
+    if hasattr(alt, "TopLevelMixin"):
+        grafico_valido = isinstance(grafica, alt.TopLevelMixin)
+
+    if not grafico_valido and hasattr(grafica, "to_html"):
+        grafico_valido = True
+
+    if not grafico_valido:
+        _mostrar_advertencia(
+            "No fue posible preparar la gráfica para su descarga."
+        )
         return
 
     try:
