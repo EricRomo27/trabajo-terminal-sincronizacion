@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.peak_matching import calcular_desfases_entre_picos
+from utils.peak_matching import resumir_desfases
 from utils.ui import (
     aplicar_estilos_generales,
     boton_descarga_plotly,
@@ -79,12 +79,13 @@ def calcular_matriz(df, metrica):
             elif metrica == 'varianza':
                 fechas_picos1 = picos_fechas[c1]
                 fechas_picos2 = picos_fechas[c2]
-                desfases = calcular_desfases_entre_picos(
+                resumen = resumir_desfases(
                     fechas_picos1,
                     fechas_picos2,
-                    ventana_maxima_dias=90,
+                    ventana_busqueda=90,
+                    ventana_confiable=45,
                 )
-                valor = np.var(np.array(desfases, dtype=float)) if len(desfases) > 0 else np.nan
+                valor = resumen["varianza"]
 
             elif metrica == 'desfase':
                 # --- NUEVO CÁLCULO: Correlación Cruzada para encontrar el mejor lag ---

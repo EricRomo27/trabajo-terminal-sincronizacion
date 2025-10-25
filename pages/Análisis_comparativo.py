@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.peak_matching import calcular_desfases_entre_picos
+from utils.peak_matching import resumir_desfases
 from utils.ui import (
     aplicar_estilos_generales,
     boton_descarga_plotly,
@@ -43,14 +43,14 @@ def realizar_analisis_completo(serie_maestro, serie_esclavo, df_index):
     fechas_picos_maestro = s_maestro_suavizada.index[picos_maestro]
     fechas_picos_esclavo = s_esclavo_suavizada.index[picos_esclavo]
     
-    desfases = calcular_desfases_entre_picos(
+    resumen_desfases = resumir_desfases(
         fechas_picos_maestro,
         fechas_picos_esclavo,
-        ventana_maxima_dias=90,
+        ventana_busqueda=90,
+        ventana_confiable=45,
     )
-    desfases_np = np.array(desfases, dtype=float)
-    varianza_desfase = np.var(desfases_np) if len(desfases) > 0 else np.nan
-    desfase_medio = np.mean(desfases_np) if len(desfases) > 0 else np.nan
+    varianza_desfase = resumen_desfases["varianza"]
+    desfase_medio = resumen_desfases["desfase_medio"]
 
     derivada_maestro = s_maestro_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
     derivada_esclavo = s_esclavo_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
@@ -103,7 +103,18 @@ def realizar_analisis_completo(serie_maestro, serie_esclavo, df_index):
     fig_fase.update_yaxes(title_text="Ciclos Acumulados (Esclavo)", row=1, col=2)
     fig_fase.update_layout(height=500, title_text="Análisis de Dinámica de Fase")
 
-    return {"sincronia_tendencia": sincronia_tendencia, "varianza_desfase": varianza_desfase, "desfase_medio": desfase_medio, "max_corr": max_corr, "mejor_lag": mejor_lag, "fig_comparativa": fig_comparativa, "fig_fase": fig_fase}
+    return {
+        "sincronia_tendencia": sincronia_tendencia,
+        "varianza_desfase": varianza_desfase,
+        "desfase_medio": desfase_medio,
+        "max_corr": max_corr,
+        "mejor_lag": mejor_lag,
+        "fig_comparativa": fig_comparativa,
+        "fig_fase": fig_fase,
+        "pares_picos": resumen_desfases["pares_validos"],
+        "pares_descartados": resumen_desfases["pares_descartados"],
+        "ventana_confiable": resumen_desfases["ventana_confiable"],
+    }
 
 if runtime_activo():
     # --- Construcción de la Interfaz ---
@@ -183,6 +194,15 @@ if runtime_activo():
         )
 
         mostrar_tarjetas_metricas(metricas)
+
+        if resultados["pares_descartados"]:
+            st.caption(
+                "Se descartaron {0} coincidencias por superar ±{1} días de diferencia."
+                .format(
+                    len(resultados["pares_descartados"]),
+                    resultados["ventana_confiable"],
+                )
+            )
 
         if not np.isnan(sync_tend) and not np.isnan(var_desfase):
             if sync_tend > 80 and var_desfase < 20:

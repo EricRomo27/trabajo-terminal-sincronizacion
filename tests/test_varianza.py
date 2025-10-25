@@ -4,7 +4,7 @@ import numpy as np
 
 from pages import Matriz_de_sincronía as matriz_module
 from pages import Análisis_comparativo as comparativo_module
-from utils.peak_matching import calcular_desfases_entre_picos
+from utils.peak_matching import calcular_desfases_entre_picos, resumir_desfases
 
 
 class MatrizVarianzaTests(unittest.TestCase):
@@ -51,6 +51,7 @@ class AnalisisComparativoTests(unittest.TestCase):
         resultados = comparativo_module.realizar_analisis_completo(serie, serie, serie.index)
 
         self.assertAlmostEqual(resultados['varianza_desfase'], 0.0, places=6)
+        self.assertEqual(resultados['pares_descartados'], [])
 
 
 class PeakMatchingTests(unittest.TestCase):
@@ -78,6 +79,21 @@ class PeakMatchingTests(unittest.TestCase):
                 (pd.Timestamp('2020-04-15'), pd.Timestamp('2020-05-10'), 25),
             ],
         )
+
+    def test_resumir_desfases_filtra_desviaciones_extremas(self):
+        fechas_maestro = pd.to_datetime(['2020-01-01', '2020-03-01', '2020-06-01'])
+        fechas_esclavo = pd.to_datetime(['2020-01-02', '2020-03-03', '2020-07-30'])
+
+        resumen = resumir_desfases(
+            fechas_maestro,
+            fechas_esclavo,
+            ventana_busqueda=120,
+            ventana_confiable=45,
+        )
+
+        self.assertEqual(resumen['desfases_validos'], [1, 2])
+        self.assertEqual([desfase for *_, desfase in resumen['pares_descartados']], [59])
+        self.assertAlmostEqual(resumen['varianza'], 0.25, places=6)
 
 
 if __name__ == '__main__':

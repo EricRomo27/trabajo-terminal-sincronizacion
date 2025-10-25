@@ -1,6 +1,7 @@
 from bisect import bisect_left
 from typing import Iterable, List, Tuple
 
+import numpy as np
 import pandas as pd
 
 
@@ -69,3 +70,76 @@ def calcular_desfases_entre_picos(
     if return_pares:
         return desfases, pares
     return desfases
+
+
+def resumir_desfases(
+    fechas_maestro: Iterable[pd.Timestamp],
+    fechas_esclavo: Iterable[pd.Timestamp],
+    *,
+    ventana_busqueda: int = 90,
+    ventana_confiable: int | None = 45,
+) -> dict:
+    """Calcula métricas de desfase entre dos conjuntos de picos.
+
+    Devuelve la lista completa de emparejamientos encontrados dentro de la
+    ``ventana_busqueda`` así como un subconjunto "confiable" limitado por la
+    ``ventana_confiable``. Las métricas (varianza, desfase medio y desviación
+    estándar) se calculan únicamente con los emparejamientos confiables para
+    evitar que coincidencias muy lejanas distorsionen el resultado.
+    """
+
+    ventana_busqueda = max(0, int(ventana_busqueda))
+    if ventana_confiable is not None:
+        ventana_confiable = max(0, int(ventana_confiable))
+        ventana_confiable = min(ventana_confiable, ventana_busqueda)
+
+    desfases, pares = calcular_desfases_entre_picos(
+        fechas_maestro,
+        fechas_esclavo,
+        ventana_maxima_dias=ventana_busqueda,
+        return_pares=True,
+    )
+
+    if ventana_confiable is None:
+        pares_validos = pares
+        pares_descartados: List[Tuple[pd.Timestamp, pd.Timestamp, int]] = []
+    else:
+        pares_validos = [
+            (maestro, esclavo, desfase)
+            for maestro, esclavo, desfase in pares
+            if abs(desfase) <= ventana_confiable
+        ]
+        pares_descartados = [
+            (maestro, esclavo, desfase)
+            for maestro, esclavo, desfase in pares
+            if abs(desfase) > ventana_confiable
+        ]
+
+    desfases_validos = [desfase for _, _, desfase in pares_validos]
+    arr = np.array(desfases_validos, dtype=float)
+
+    if arr.size == 0:
+        varianza = np.nan
+        desfase_medio = np.nan
+        desviacion = np.nan
+    elif arr.size == 1:
+        varianza = 0.0
+        desfase_medio = float(arr[0])
+        desviacion = 0.0
+    else:
+        varianza = float(np.var(arr))
+        desfase_medio = float(np.mean(arr))
+        desviacion = float(np.std(arr))
+
+    return {
+        "desfases": desfases,
+        "pares": pares,
+        "desfases_validos": desfases_validos,
+        "pares_validos": pares_validos,
+        "pares_descartados": pares_descartados,
+        "varianza": varianza,
+        "desfase_medio": desfase_medio,
+        "desviacion_estandar": desviacion,
+        "ventana_busqueda": ventana_busqueda,
+        "ventana_confiable": ventana_confiable,
+    }

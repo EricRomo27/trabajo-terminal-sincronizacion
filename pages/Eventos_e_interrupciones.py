@@ -15,7 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.peak_matching import calcular_desfases_entre_picos
+from utils.peak_matching import resumir_desfases
 from utils.ui import (
     aplicar_estilos_generales,
     boton_descarga_altair,
@@ -71,15 +71,22 @@ def _calcular_metricas_sincronia(
 
     picos1, _ = find_peaks(s1, distance=30, height=s1.mean())
     picos2, _ = find_peaks(s2, distance=30, height=s2.mean())
-    desfases, pares = calcular_desfases_entre_picos(
-        s1.index[picos1], s2.index[picos2], return_pares=True
+    resumen = resumir_desfases(
+        s1.index[picos1],
+        s2.index[picos2],
+        ventana_busqueda=90,
+        ventana_confiable=45,
     )
-    var_desfase = float(np.var(desfases)) if desfases else np.nan
+
+    desfases_validos = resumen["desfases_validos"]
+    var_desfase = float(resumen["varianza"]) if desfases_validos else np.nan
 
     return {
         "sync_tend": float(sync_tend),
         "var_desfase": var_desfase,
-        "pares": pares,
+        "pares": resumen["pares_validos"],
+        "pares_descartados": resumen["pares_descartados"],
+        "ventana_confiable": resumen["ventana_confiable"],
     }
 
 
@@ -295,6 +302,14 @@ if runtime_activo():
                 )
             else:
                 st.dataframe(df_pares_evento, use_container_width=True)
+            if metricas_evento["pares_descartados"]:
+                st.caption(
+                    "Se descartaron {0} emparejamientos por superar ±{1} días."
+                    .format(
+                        len(metricas_evento["pares_descartados"]),
+                        metricas_evento["ventana_confiable"],
+                    )
+                )
 
         with sub_tabs[1]:
             if df_pares_referencia.empty:
@@ -303,6 +318,14 @@ if runtime_activo():
                 )
             else:
                 st.dataframe(df_pares_referencia, use_container_width=True)
+            if metricas_referencia["pares_descartados"]:
+                st.caption(
+                    "Se descartaron {0} emparejamientos por superar ±{1} días."
+                    .format(
+                        len(metricas_referencia["pares_descartados"]),
+                        metricas_referencia["ventana_confiable"],
+                    )
+                )
 
         st.caption(
             "Las coincidencias se obtienen utilizando la misma lógica de emparejamiento que la matriz"
