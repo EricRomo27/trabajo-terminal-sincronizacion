@@ -5,6 +5,7 @@ import numpy as np
 from pages import Matriz_de_sincronía as matriz_module
 from pages import Análisis_comparativo as comparativo_module
 from utils.peak_matching import calcular_desfases_entre_picos, resumir_desfases
+from utils.peak_matching_access import resumir_desfases_seguro
 
 
 class MatrizVarianzaTests(unittest.TestCase):
@@ -95,6 +96,21 @@ class PeakMatchingTests(unittest.TestCase):
         self.assertEqual([desfase for *_, desfase in resumen['pares_descartados']], [59])
         self.assertAlmostEqual(resumen['varianza'], 0.25, places=6)
 
+
+class PeakMatchingAccessTests(unittest.TestCase):
+    def test_resumen_seguro_retorna_metricas(self):
+        fechas = pd.to_datetime(['2022-01-01', '2022-02-01', '2022-03-01'])
+
+        resumen = resumir_desfases_seguro(
+            fechas,
+            fechas,
+            ventana_busqueda=60,
+            ventana_confiable=30,
+        )
+
+        self.assertIn('varianza', resumen)
+        self.assertEqual(resumen['varianza'], 0.0)
+        self.assertEqual(resumen['pares_descartados'], [])
 
 if __name__ == '__main__':
     unittest.main()

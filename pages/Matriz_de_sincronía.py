@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.peak_matching import resumir_desfases
+from utils.peak_matching_access import resumir_desfases_seguro as resumir_desfases
 from utils.ui import (
     aplicar_estilos_generales,
     boton_descarga_plotly,
