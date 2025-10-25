@@ -51,6 +51,7 @@ def realizar_analisis_completo(serie_maestro, serie_esclavo, df_index):
     )
     varianza_desfase = resumen_desfases["varianza"]
     desfase_medio = resumen_desfases["desfase_medio"]
+    desviacion_estandar = resumen_desfases["desviacion_estandar"]
 
     derivada_maestro = s_maestro_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
     derivada_esclavo = s_esclavo_suavizada.rolling(15, center=True).mean().pct_change(fill_method=None)
@@ -107,6 +108,7 @@ def realizar_analisis_completo(serie_maestro, serie_esclavo, df_index):
         "sincronia_tendencia": sincronia_tendencia,
         "varianza_desfase": varianza_desfase,
         "desfase_medio": desfase_medio,
+        "desviacion_estandar": desviacion_estandar,
         "max_corr": max_corr,
         "mejor_lag": mejor_lag,
         "fig_comparativa": fig_comparativa,
@@ -151,10 +153,20 @@ if runtime_activo():
                 "tipo": "positive" if diferencia >= 0 else "negative",
             }
 
+        desviacion = resultados.get("desviacion_estandar", np.nan)
+
         if np.isnan(var_desfase):
             var_valor = "N/D"
+            var_delta = None
         else:
             var_valor = f"{var_desfase:.2f} días²"
+            if np.isnan(desviacion) or desviacion == 0:
+                var_delta = None
+            else:
+                var_delta = {
+                    "texto": f"Desv. estándar ≈ {desviacion:.1f} días",
+                    "tipo": "neutral",
+                }
 
         metricas.append(
             {
@@ -171,16 +183,32 @@ if runtime_activo():
                 "titulo": "Varianza del desfase",
                 "valor": var_valor,
                 "descripcion": "Dispersión de los desfases entre picos emparejados (días²). Valores pequeños indican ocurrencias casi simultáneas.",
-                "delta": {"texto": "Ideal: cercana a 0", "tipo": "neutral"},
+                "delta": var_delta,
             }
         )
+        if np.isnan(desfase_medio):
+            desfase_delta = None
+        else:
+            ventana_conf = resultados.get("ventana_confiable")
+            if ventana_conf is not None:
+                desfase_delta = {
+                    "texto": f"Rango confiable ±{ventana_conf} días",
+                    "tipo": "neutral",
+                }
+            elif not np.isnan(desviacion) and desviacion > 0:
+                desfase_delta = {
+                    "texto": f"Desv. estándar ≈ {desviacion:.1f} días",
+                    "tipo": "neutral",
+                }
+            else:
+                desfase_delta = None
         metricas.append(
             {
                 "icono": "🧭",
                 "titulo": "Desfase medio",
                 "valor": "N/D" if np.isnan(desfase_medio) else f"{desfase_medio:.1f} días",
                 "descripcion": "Promedio del desplazamiento temporal necesario para alinear cada pico maestro con su contraparte.",
-                "delta": {"texto": "Referencia: 0 días", "tipo": "neutral"},
+                "delta": desfase_delta,
             }
         )
         metricas.append(
