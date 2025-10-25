@@ -1,5 +1,5 @@
 from bisect import bisect_left
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,7 @@ def calcular_desfases_entre_picos(
     ventana_maxima_dias: int = 90,
     *,
     return_pares: bool = False,
-) -> List[int] | Tuple[List[int], List[Tuple[pd.Timestamp, pd.Timestamp, int]]]:
+) -> Union[List[int], Tuple[List[int], List[Tuple[pd.Timestamp, pd.Timestamp, int]]]]:
     """Calcula los desfases (en días) entre los picos maestro y esclavo.
 
     Alinea cada pico maestro con el pico esclavo temporalmente más cercano
@@ -77,7 +77,7 @@ def resumir_desfases(
     fechas_esclavo: Iterable[pd.Timestamp],
     *,
     ventana_busqueda: int = 90,
-    ventana_confiable: int | None = 45,
+    ventana_confiable: Optional[int] = 45,
 ) -> dict:
     """Calcula métricas de desfase entre dos conjuntos de picos.
 
