@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from typing import Optional
 
 import streamlit as st
 
@@ -16,19 +17,47 @@ def _mostrar_advertencia(mensaje: str) -> None:
         st.warning(mensaje)
 
 
+def _kaleido_disponible() -> bool:
+    """Detecta si Kaleido está instalado para exportar imágenes de Plotly."""
+
+    try:  # pragma: no cover - la disponibilidad depende del entorno de ejecución
+        import kaleido  # type: ignore  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
+def _descarga_plotly_como_png(
+    figura: "plotly.graph_objects.Figure",
+    *,
+    formato: str,
+) -> Optional[io.BytesIO]:
+    """Intenta exportar la figura como imagen y regresa el buffer listo para descargar."""
+
+    buffer = io.BytesIO()
+    try:  # pragma: no cover - depende de Kaleido instalado
+        figura.write_image(buffer, format=formato)
+    except Exception:
+        return None
+
+    buffer.seek(0)
+    return buffer
+
+
 def boton_descarga_plotly(
     figura: "plotly.graph_objects.Figure",
     nombre_archivo: str,
     *,
     etiqueta: str = "📥 Descargar gráfica",
     formato: str = "png",
+    etiqueta_fallback: str = "📥 Descargar versión interactiva",
 ) -> None:
-    """Renderiza un botón para descargar una figura de Plotly como imagen.
+    """Renderiza un botón de descarga para gráficas de Plotly.
 
-    La función es segura de invocar fuera del runtime de Streamlit: simplemente
-    no realiza ninguna acción en ese escenario. Si la figura no puede
-    exportarse (por ejemplo, por falta de Kaleido), se muestra una advertencia
-    amigable en la interfaz.
+    * Si Kaleido está disponible, genera una imagen en el formato indicado.
+    * En entornos sin Kaleido, ofrece un HTML interactivo para que la descarga
+      nunca falle ni oculte la visualización original.
     """
 
     if not runtime_activo():
@@ -43,24 +72,42 @@ def boton_descarga_plotly(
         return
 
     if not isinstance(figura, Figure):
-        _mostrar_advertencia("La descarga solo está disponible para objetos plotly.graph_objects.Figure.")
-        return
-
-    buffer = io.BytesIO()
-    try:
-        figura.write_image(buffer, format=formato)
-    except Exception:  # pragma: no cover - depende de Kaleido instalado
         _mostrar_advertencia(
-            "No fue posible generar la descarga de la gráfica (verifica que Kaleido esté correctamente instalado)."
+            "La descarga solo está disponible para objetos plotly.graph_objects.Figure."
         )
         return
 
-    buffer.seek(0)
+    buffer = None
+    if _kaleido_disponible():
+        buffer = _descarga_plotly_como_png(figura, formato=formato)
+
+    if buffer is not None:
+        st.download_button(
+            label=etiqueta,
+            data=buffer,
+            file_name=nombre_archivo,
+            mime=f"image/{formato}",
+        )
+        return
+
+    # Fallback: generar un HTML interactivo para no bloquear la descarga.
+    try:
+        contenido_html = figura.to_html(include_plotlyjs="cdn")
+    except Exception:  # pragma: no cover - depende de la configuración del gráfico
+        _mostrar_advertencia(
+            "No se pudo preparar la gráfica para descarga."
+        )
+        return
+
+    nombre_html = nombre_archivo.rsplit(".", 1)[0] + ".html"
     st.download_button(
-        label=etiqueta,
-        data=buffer,
-        file_name=nombre_archivo,
-        mime=f"image/{formato}",
+        label=etiqueta_fallback,
+        data=contenido_html,
+        file_name=nombre_html,
+        mime="text/html",
+    )
+    st.caption(
+        "Se generó una versión interactiva en HTML porque Kaleido no está disponible en el entorno."
     )
 
 

@@ -32,10 +32,9 @@ def aplicar_estilos_generales() -> None:
         return
 
     clave_estado = "_estilos_sincronia_aplicados"
-    if st.session_state.get(clave_estado):
-        return
+    if not st.session_state.get(clave_estado):
+        st.session_state[clave_estado] = True
 
-    st.session_state[clave_estado] = True
     st.markdown(
         """
         <style>
